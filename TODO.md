@@ -1,10 +1,10 @@
-# VeriEquity 后续待办
+# Fathomark 渊衡后续待办
 
 本清单用于记录设计确认后仍需完成的工作。它是项目级 backlog，不是逐文件实施计划；开始编码前仍需把当前里程碑拆成可执行计划。
 
 ## 0. 开工准备
 
-- [ ] 最终确认项目名 `VeriEquity`，完成基础商标与包名可用性检查。
+- [ ] 完成 `Fathomark` / `渊衡` 的正式商标、包名与域名核验。
 - [ ] 确认 Python 包名、Docker 镜像名和未来 GitHub 组织/仓库名。
 - [ ] 补齐 Apache 2.0 `LICENSE` 与 `NOTICE`。
 - [ ] 编写 `SECURITY.md`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 和 `DISCLAIMER.md`。
@@ -108,7 +108,7 @@
 
 ## 5. M5：PersonalInvestment 接入
 
-- [ ] 在 VeriEquity 提供当前研报 front matter 与因子表导入器。
+- [ ] 在 Fathomark 提供当前研报 front matter 与因子表导入器。
 - [ ] 导入时保留原文件、日期、框架版本和内容哈希。
 - [ ] 不将旧 70 分 `scores` 行自动转换成正式 100 分评级。
 - [ ] 为 PersonalInvestment 提供 API 客户端或适配层。

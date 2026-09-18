@@ -1,4 +1,4 @@
-# VeriEquity 多 Agent 选股评分系统设计
+# Fathomark 渊衡多 Agent 选股评分系统设计
 
 - 日期：2026-09-18
 - 状态：已确认，等待实施计划
@@ -11,7 +11,7 @@
 
 现有 PersonalInvestment 同时存在旧的 7 因子 70 分数据库评分表，以及当前研报使用的 11 因子、100 分、多 Lens、证据置信度、Veto 和版本化体系。新项目不迁移旧模型作为正式评分口径，而是将当前研究方法抽取成独立、可验证、可扩展的开源系统。
 
-VeriEquity 的首要目标是：输入一只普通美股上市经营公司，在锁定研究角色、数据截止日和框架版本后，由多个专业 Agent 分工采集与评议证据，再由确定性引擎计算评分，经过人工复核后发布不可变的正式评级版本。
+Fathomark（渊衡）的首要目标是：输入一只普通美股上市经营公司，在锁定研究角色、数据截止日和框架版本后，由多个专业 Agent 分工采集与评议证据，再由确定性引擎计算评分，经过人工复核后发布不可变的正式评级版本。
 
 系统不以“多个 Agent 聊天后投票”为核心。Agent 只负责需要语义判断的工作；加权计算、评级映射、Veto 优先级、版本状态和正式发布权限必须由确定性代码控制。
 
@@ -92,7 +92,7 @@ API / CLI / Optional Web
 ## 4. 仓库结构
 
 ```text
-veriequity/
+fathomark/
 ├── packages/
 │   ├── core/          # Pydantic 模型、框架规则、计算、Veto、评级映射
 │   ├── agents/        # Agent 契约、专业 Agent 与编排状态机
@@ -304,13 +304,13 @@ Webhook 使用 HMAC 签名、时间戳与重放保护，通知 `needs_review`、
 CLI 与 API 使用同一 SDK：
 
 ```text
-stockscore run AAPL --exchange NASDAQ --role core
-stockscore status <run-id>
-stockscore evidence <run-id>
-stockscore review <run-id>
-stockscore approve <run-id>
-stockscore export <run-id> --format html,md,pdf
-stockscore frameworks validate frameworks/common-stock.yaml
+fathomark run AAPL --exchange NASDAQ --role core
+fathomark status <run-id>
+fathomark evidence <run-id>
+fathomark review <run-id>
+fathomark approve <run-id>
+fathomark export <run-id> --format html,md,pdf
+fathomark frameworks validate frameworks/common-stock.yaml
 ```
 
 Web 首版仅包含研究任务列表、新建研究、因子审核工作台和报告预览。Web 不保存业务状态，删除 Web 应用后系统仍完整可用。
@@ -440,18 +440,18 @@ CI 使用固定公开样例与录制 Provider 响应，不依赖实时网络或�
 
 ```text
 docker run \
-  -e DATABASE_URL=sqlite:////data/veriequity.db \
+  -e DATABASE_URL=sqlite:////data/fathomark.db \
   -e OPENAI_API_KEY=<secret> \
   -v ./data:/data \
   -p 8000:8000 \
-  veriequity/server
+  fathomark/server
 ```
 
 正式部署使用相同镜像拆分 API 与 Worker，并连接 PostgreSQL：
 
 ```text
-veriequity serve
-veriequity worker
+fathomark serve
+fathomark worker
 ```
 
 首版不要求 Redis。吞吐量需要横向扩展时，再引入独立任务队列；该变化不得影响 API 和核心数据契约。
@@ -462,7 +462,7 @@ veriequity worker
 
 ```text
 PersonalInvestment
-→ 创建 VeriEquity 研究任务
+→ 创建 Fathomark 研究任务
 → 展示 needs_review
 → 用户提交审核与批准
 → 拉取 approved JSON 与报告制品
@@ -472,11 +472,11 @@ PersonalInvestment
 迁移规则：
 
 - 现有 Markdown 研报保持不变；
-- VeriEquity 提供导入器解析当前 front matter 与因子表；
+- Fathomark 提供导入器解析当前 front matter 与因子表；
 - 旧 70 分 `scores` 表进入只读兼容期，不转换成新的正式评级；
 - 新评级按 `symbol + research_role + framework_version` 建立版本；
 - PersonalInvestment 只消费 `approved`；
-- PersonalInvestment 不能直接写 VeriEquity 数据库；
+- PersonalInvestment 不能直接写 Fathomark 数据库；
 - 新评级不能自动更新持仓、交易记录或交易动作。
 
 ## 19. 开源治理
@@ -525,4 +525,4 @@ PersonalInvestment
 - HTML 是视觉主版，Markdown 独立渲染，PDF 由打印 HTML 生成；
 - 批准版本不可变；
 - 代码采用 Apache 2.0 方向；
-- 工作名称为 VeriEquity。
+- 英文品牌为 Fathomark，中文品牌为“渊衡”，标语为“深研有据，权衡有度”。
