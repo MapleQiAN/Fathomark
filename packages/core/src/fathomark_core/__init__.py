@@ -1,0 +1,1 @@
+"""Fathomark deterministic scoring core."""
