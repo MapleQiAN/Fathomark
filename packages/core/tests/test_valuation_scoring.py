@@ -16,9 +16,11 @@ CFG = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.ya
 @pytest.mark.parametrize(
     "d,expected",
     [(0.35, 0.0), (0.30, 0.0), (0.29, 4.0), (0.10, 4.0), (0.09, 7.0),
-     (-0.10, 7.5), (-0.15, 8.5), (-0.20, 9.5), (-0.21, 10.0)],
+     (-0.10, 7.0), (-0.1000001, 7.5), (-0.15, 8.5), (-0.20, 9.5), (-0.21, 10.0)],
 )
 def test_deviation_anchor_bands(d, expected):
+    # Left-closed right-open (framework rule): -0.10 belongs to the flat 7-band;
+    # just below -0.10 the interp band applies and rounds to 7.5.
     assert score_deviation(d, CFG) == expected
 
 

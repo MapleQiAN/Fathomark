@@ -139,26 +139,19 @@ def _round_half(x: float) -> float:
 
 
 def score_deviation(d: float, cfg: ValuationConfig) -> float:
-    # Interpolation bands are closed on both ends and take precedence at shared
-    # boundaries: the framework maps the edges into the band (接近-10%取7.5分,
-    # 接近-20%取9.5分), so d == -0.10 scores 7.5, not the adjacent flat band's 7.
-    anchors = cfg.deviation["anchors"]
-    for anchor in anchors:
-        if anchor.get("score") is not None:
-            continue
-        lo = anchor["min"] if anchor["min"] is not None else float("-inf")
-        hi = anchor["max_exclusive"] if anchor["max_exclusive"] is not None else float("inf")
-        if lo <= d <= hi:
-            # score_low at hi edge, score_high at lo edge
-            frac = (hi - d) / (hi - lo)
-            return _round_half(anchor["score_low"] + frac * (anchor["score_high"] - anchor["score_low"]))
-    for anchor in anchors:
-        if anchor.get("score") is None:
-            continue
+    # Left-closed right-open matching in YAML anchor order (framework: 边界统一
+    # 采用左闭右开规则). d == -0.10 belongs to the flat band [-0.10, 0.10) -> 7.0;
+    # the interp band [-0.20, -0.10) approaches 7.5 only from below ("接近-10%
+    # 取7.5分" means *near* -0.10, not at it) and gives 9.5 at d == -0.20.
+    for anchor in cfg.deviation["anchors"]:
         lo = anchor["min"] if anchor["min"] is not None else float("-inf")
         hi = anchor["max_exclusive"] if anchor["max_exclusive"] is not None else float("inf")
         if lo <= d < hi:
-            return anchor["score"]
+            if anchor.get("score") is not None:
+                return anchor["score"]
+            # linear interpolation band: score_low at hi edge, score_high at lo edge
+            frac = (hi - d) / (hi - lo)
+            return _round_half(anchor["score_low"] + frac * (anchor["score_high"] - anchor["score_low"]))
     raise ValueError(f"deviation {d} outside anchor table")
 
 
