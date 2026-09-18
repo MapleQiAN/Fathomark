@@ -1,0 +1,97 @@
+from datetime import date, datetime
+from pathlib import Path
+
+import pytest
+
+from fathomark_core.framework import load_framework
+from fathomark_core.schemas import (
+    EvidenceItem,
+    FactorProposal,
+    ProposalError,
+    ScopeSnapshot,
+    validate_proposal,
+)
+
+FRAMEWORK = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml")
+CUTOFF = date(2026, 9, 18)
+EVIDENCE = {"ev_001": date(2026, 9, 1)}
+
+
+def _evidence(ev_id: str = "ev_001", published: date = date(2026, 9, 1)) -> EvidenceItem:
+    return EvidenceItem(
+        id=ev_id,
+        source_name="SEC 10-Q",
+        source_class="filings",
+        url="https://www.sec.gov/example",
+        published_date=published,
+        data_period_end=None,
+        accessed_at=datetime(2026, 9, 18, 12, 0, 0),
+        grade="A",
+        content_hash="sha256:abc",
+        excerpt=None,
+    )
+
+
+def _proposal(**kw) -> FactorProposal:
+    base = dict(
+        factor="financial_health",
+        proposed_score=7.5,
+        rationale="现金流覆盖未来两年债务，但利息覆盖率正在下降",
+        evidence_ids=["ev_001"],
+        counter_evidence_ids=[],
+        confidence="medium",
+        missing_data=[],
+        as_of_date=date(2026, 9, 18),
+    )
+    return FactorProposal(**(base | kw))
+
+
+def test_scope_snapshot_and_evidence_round_trip():
+    scope = ScopeSnapshot(
+        symbol="ADBE", exchange="NASDAQ", research_role="core", horizon="5-10y",
+        research_date=date(2026, 9, 18), data_cutoff=date(2026, 9, 18),
+        framework_ref="common-stock@1.0.0",
+    )
+    assert scope.framework_ref == "common-stock@1.0.0"
+    ev = _evidence()
+    assert EvidenceItem.model_validate_json(ev.model_dump_json()) == ev
+
+
+def test_valid_proposal_passes():
+    validate_proposal(_proposal(), framework=FRAMEWORK, evidence=EVIDENCE, data_cutoff=CUTOFF)
+
+
+def test_score_must_be_on_half_step():
+    with pytest.raises(ProposalError, match="step"):
+        validate_proposal(_proposal(proposed_score=7.3), framework=FRAMEWORK,
+                          evidence=EVIDENCE, data_cutoff=CUTOFF)
+
+
+def test_unknown_evidence_rejected():
+    with pytest.raises(ProposalError, match="ev_999"):
+        validate_proposal(_proposal(evidence_ids=["ev_999"]), framework=FRAMEWORK,
+                          evidence=EVIDENCE, data_cutoff=CUTOFF)
+
+
+def test_unknown_factor_rejected():
+    with pytest.raises(ProposalError):
+        validate_proposal(_proposal(factor="vibes"), framework=FRAMEWORK,
+                          evidence=EVIDENCE, data_cutoff=CUTOFF)
+
+
+def test_proposal_after_cutoff_rejected():
+    with pytest.raises(ProposalError, match="cutoff"):
+        validate_proposal(_proposal(as_of_date=date(2026, 9, 19)), framework=FRAMEWORK,
+                          evidence=EVIDENCE, data_cutoff=CUTOFF)
+
+
+def test_empty_rationale_rejected():
+    with pytest.raises(ProposalError):
+        validate_proposal(_proposal(rationale="  "), framework=FRAMEWORK,
+                          evidence=EVIDENCE, data_cutoff=CUTOFF)
+
+
+def test_evidence_after_cutoff_rejected():
+    with pytest.raises(ProposalError, match="cutoff"):
+        validate_proposal(_proposal(), framework=FRAMEWORK,
+                          evidence=EVIDENCE, data_cutoff=date(2026, 8, 31))
