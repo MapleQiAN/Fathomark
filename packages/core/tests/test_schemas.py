@@ -6,6 +6,7 @@ from fathomark_core.framework import load_framework
 from fathomark_core.schemas import (
     EvidenceItem,
     FactorProposal,
+    MetricObservation,
     ProposalError,
     ScopeSnapshot,
     validate_proposal,
@@ -54,6 +55,16 @@ def test_scope_snapshot_and_evidence_round_trip():
     assert scope.framework_ref == "common-stock@1.0.0"
     ev = _evidence()
     assert EvidenceItem.model_validate_json(ev.model_dump_json()) == ev
+
+
+def test_metric_observation_round_trip():
+    obs = MetricObservation(
+        metric="fcff", value=10.28e9, unit="USD", currency="USD",
+        basis="FY2025 10-K", formula="cfo - capex", data_date=date(2025, 12, 31),
+        evidence_id="ev_001",
+    )
+    assert obs.currency == "USD"
+    assert MetricObservation.model_validate_json(obs.model_dump_json()) == obs
 
 
 def test_valid_proposal_passes():

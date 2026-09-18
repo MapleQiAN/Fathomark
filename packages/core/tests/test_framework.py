@@ -44,6 +44,17 @@ def test_rating_bands_must_cover_0_to_100(tmp_path):
         load_framework(p)
 
 
+def test_rating_bands_must_reach_100_at_top(tmp_path):
+    # Bands contiguous from 0 but the top band ends at 95 (< 100) — must be rejected.
+    text = FRAMEWORK_PATH.read_text(encoding="utf-8").replace(
+        "{grade: S,  min: 90, max_exclusive: 101}", "{grade: S,  min: 90, max_exclusive: 95}", 1
+    )
+    p = tmp_path / "bad.yaml"
+    p.write_text(text, encoding="utf-8")
+    with pytest.raises(FrameworkValidationError, match="rating"):
+        load_framework(p)
+
+
 def test_veto_rule_factor_must_exist(tmp_path):
     text = FRAMEWORK_PATH.read_text(encoding="utf-8").replace(
         "  - factor: financial_health\n    below: 3.0", "  - factor: nope\n    below: 3.0", 1

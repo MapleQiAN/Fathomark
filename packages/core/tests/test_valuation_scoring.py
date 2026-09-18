@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import pytest
+from fathomark_core import valuation
 from fathomark_core.framework import load_framework
 from fathomark_core.valuation import (
+    SensitivityResult,
     deviation,
     score_backup_peg,
     score_deviation,
@@ -43,6 +45,24 @@ def test_adbe_scores_10():
     assert not v.switched_to_backup
     assert v.implied_growth == pytest.approx(-0.05, abs=0.01)
     assert v.score == 10.0  # deviation ≈ ( -0.05 - 0.08 ) / 0.08 ≈ -1.6 < -0.20
+    assert v.confidence_downgrade is False  # robust sensitivity
+
+
+def test_fragile_sensitivity_keeps_score_but_downgrades_confidence(monkeypatch):
+    # Fragile: base-case score is kept, but confidence_downgrade must be set.
+    fake = SensitivityResult(
+        base_g=0.05, min_g=-0.02, max_g=0.12, width=0.14,
+        valid_scenarios=9, classification="fragile",
+    )
+    monkeypatch.setattr(valuation, "run_sensitivity", lambda *a, **k: fake)
+    v = score_valuation(
+        cfg=CFG, ev_market=1e11, fcff0=1e9, wacc=0.10,
+        terminal_growth=0.03, g_expected=1.0,
+    )
+    assert v.method == "reverse_dcf"
+    assert not v.switched_to_backup
+    assert v.score == 10.0  # deviation ≈ (0.05 - 1.0) / 1.0 = -0.95 < -0.20
+    assert v.confidence_downgrade is True
 
 
 def test_no_root_switches_to_backup():

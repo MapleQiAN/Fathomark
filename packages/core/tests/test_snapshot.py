@@ -58,6 +58,18 @@ def test_duplicate_factor_proposal_rejected():
         evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=dup)
 
 
+def test_duplicate_evidence_id_rejected():
+    dup = _evidence() + [_evidence()[0]]
+    with pytest.raises(ValueError, match="duplicate evidence id: ev_001"):
+        evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=dup, proposals=_proposals())
+
+
+def test_scope_framework_ref_mismatch_rejected():
+    bad_scope = SCOPE.model_copy(update={"framework_ref": "common-stock@9.9.9"})
+    with pytest.raises(ValueError, match="framework"):
+        evaluate(framework=FRAMEWORK, scope=bad_scope, evidence=_evidence(), proposals=_proposals())
+
+
 def test_missing_factor_proposal_rejected():
     with pytest.raises(ValueError, match="missing"):
         evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals()[:-1])
@@ -68,6 +80,15 @@ def test_identical_inputs_identical_hash():
     b = evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals())
     assert a.content_hash == b.content_hash
     assert a == b
+
+
+def test_hash_stable_under_reversed_input_order():
+    a = evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals())
+    b = evaluate(
+        framework=FRAMEWORK, scope=SCOPE,
+        evidence=list(reversed(_evidence())), proposals=list(reversed(_proposals())),
+    )
+    assert a.content_hash == b.content_hash
 
 
 def test_different_inputs_different_hash():
