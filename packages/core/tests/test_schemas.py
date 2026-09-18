@@ -1,8 +1,7 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
-
 from fathomark_core.framework import load_framework
 from fathomark_core.schemas import (
     EvidenceItem,
@@ -25,7 +24,7 @@ def _evidence(ev_id: str = "ev_001", published: date = date(2026, 9, 1)) -> Evid
         url="https://www.sec.gov/example",
         published_date=published,
         data_period_end=None,
-        accessed_at=datetime(2026, 9, 18, 12, 0, 0),
+        accessed_at=datetime(2026, 9, 18, 12, 0, 0, tzinfo=UTC),
         grade="A",
         content_hash="sha256:abc",
         excerpt=None,
@@ -33,16 +32,16 @@ def _evidence(ev_id: str = "ev_001", published: date = date(2026, 9, 1)) -> Evid
 
 
 def _proposal(**kw) -> FactorProposal:
-    base = dict(
-        factor="financial_health",
-        proposed_score=7.5,
-        rationale="现金流覆盖未来两年债务，但利息覆盖率正在下降",
-        evidence_ids=["ev_001"],
-        counter_evidence_ids=[],
-        confidence="medium",
-        missing_data=[],
-        as_of_date=date(2026, 9, 18),
-    )
+    base = {
+        "factor": "financial_health",
+        "proposed_score": 7.5,
+        "rationale": "现金流覆盖未来两年债务，但利息覆盖率正在下降",
+        "evidence_ids": ["ev_001"],
+        "counter_evidence_ids": [],
+        "confidence": "medium",
+        "missing_data": [],
+        "as_of_date": date(2026, 9, 18),
+    }
     return FactorProposal(**(base | kw))
 
 

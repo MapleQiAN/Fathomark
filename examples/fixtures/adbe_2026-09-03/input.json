@@ -1,0 +1,34 @@
+{
+  "scope": {
+    "symbol": "ADBE",
+    "exchange": "NASDAQ",
+    "research_role": "core",
+    "horizon": "5-10y",
+    "research_date": "2026-09-03",
+    "data_cutoff": "2026-09-03",
+    "framework_ref": "common-stock@1.0.0"
+  },
+  "evidence": [
+    {"id": "ev_001", "source_name": "Adobe Q2 FY2026 Results", "source_class": "filings",
+     "url": "https://www.sec.gov/Archives/edgar/data/796343/000079634326000109/adbeex991q226.htm",
+     "published_date": "2026-06-11", "data_period_end": "2026-05-29",
+     "accessed_at": "2026-09-03T12:00:00", "grade": "A", "content_hash": "sha256:fixture1", "excerpt": null},
+    {"id": "ev_002", "source_name": "Adobe FY2026 Q2 Form 10-Q", "source_class": "filings",
+     "url": "https://www.sec.gov/Archives/edgar/data/796343/000079634326000112/adbe-20260529.htm",
+     "published_date": "2026-06-15", "data_period_end": "2026-05-29",
+     "accessed_at": "2026-09-03T12:00:00", "grade": "A", "content_hash": "sha256:fixture2", "excerpt": null}
+  ],
+  "proposals": [
+    {"factor": "business_moat", "proposed_score": 9.0, "rationale": "专业创作/PDF/企业工作流转换成本极强", "evidence_ids": ["ev_001"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "financial_health", "proposed_score": 9.5, "rationale": "轻资本百亿美元OCF债务可覆盖", "evidence_ids": ["ev_002"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "governance", "proposed_score": 7.5, "rationale": "治理成熟但CEO交接扣分", "evidence_ids": ["ev_001"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "policy_risk", "proposed_score": 6.5, "rationale": "订阅和解与大型并购监管", "evidence_ids": ["ev_001"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "growth_sustainability", "proposed_score": 7.5, "rationale": "双位数增长但AI范式风险", "evidence_ids": ["ev_001"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "valuation", "proposed_score": 10.0, "rationale": "反向DCF隐含FCFF约-5%增长", "evidence_ids": ["ev_002"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "earnings_quality", "proposed_score": 10.0, "rationale": "高订阅高FCF转化极低资本开支", "evidence_ids": ["ev_002"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "trend_momentum", "proposed_score": 7.0, "rationale": "自6月低点恢复但低于52周高点", "evidence_ids": ["ev_001"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "liquidity", "proposed_score": 10.0, "rationale": "大型NASDAQ软件股流动性充分", "evidence_ids": ["ev_001"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "volatility_downside", "proposed_score": 4.0, "rationale": "一年内最大回撤约49%", "evidence_ids": ["ev_001"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
+    {"factor": "catalyst_window", "proposed_score": 0.0, "rationale": "核心仓不依赖短期催化剂", "evidence_ids": ["ev_001"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"}
+  ]
+}

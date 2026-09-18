@@ -1,11 +1,10 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
-
-from hypothesis import given, settings
-from hypothesis import strategies as st
 
 from fathomark_core import evaluate, load_framework
 from fathomark_core.schemas import EvidenceItem, FactorProposal, ScopeSnapshot
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 FRAMEWORK = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml")
 DAY = date(2026, 9, 18)
@@ -25,7 +24,7 @@ def _run(scores):
         EvidenceItem(
             id=f"ev_{i:03d}", source_name="fixture", source_class="filings",
             url=None, published_date=DAY, data_period_end=None,
-            accessed_at=datetime(2026, 9, 18), grade="A", content_hash=str(i),
+            accessed_at=datetime(2026, 9, 18, tzinfo=UTC), grade="A", content_hash=str(i),
         )
         for i in range(1, 12)
     ]

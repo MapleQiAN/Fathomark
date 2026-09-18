@@ -1,0 +1,55 @@
+{
+  "scope": {
+    "symbol": "ADBE",
+    "exchange": "NASDAQ",
+    "research_role": "core",
+    "horizon": "5-10y",
+    "research_date": "2026-09-03",
+    "data_cutoff": "2026-09-03",
+    "framework_ref": "common-stock@1.0.0"
+  },
+  "lens_results": {
+    "core": {
+      "lens": "core",
+      "total": 85.75,
+      "rating": "A+",
+      "tactical_state": null,
+      "vetoed": false,
+      "veto_reasons": [],
+      "flagged": false
+    },
+    "offensive": {
+      "lens": "offensive",
+      "total": 81.3,
+      "rating": "A",
+      "tactical_state": null,
+      "vetoed": false,
+      "veto_reasons": [],
+      "flagged": false
+    },
+    "tactical": {
+      "lens": "tactical",
+      "total": 63.0,
+      "rating": "C",
+      "tactical_state": "T3",
+      "vetoed": false,
+      "veto_reasons": [],
+      "flagged": false
+    }
+  },
+  "factor_scores": {
+    "business_moat": 9.0,
+    "financial_health": 9.5,
+    "governance": 7.5,
+    "policy_risk": 6.5,
+    "growth_sustainability": 7.5,
+    "valuation": 10.0,
+    "earnings_quality": 10.0,
+    "trend_momentum": 7.0,
+    "liquidity": 10.0,
+    "volatility_downside": 4.0,
+    "catalyst_window": 0.0
+  },
+  "overall_confidence": "high",
+  "content_hash": "sha256:de22ee712c0020110fec23298f49a49b33966c7a8b3b8213ef088e968b2b567c"
+}

@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from fathomark_core.framework import (
     FrameworkValidationError,
     load_framework,

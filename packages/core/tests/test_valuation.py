@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from fathomark_core.framework import load_framework
 from fathomark_core.valuation import (
     run_sensitivity,

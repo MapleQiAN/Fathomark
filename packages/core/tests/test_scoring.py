@@ -1,9 +1,12 @@
 from pathlib import Path
 
 import pytest
-
 from fathomark_core.framework import load_framework
-from fathomark_core.scoring import rating_for_total, tactical_state_for_total, weighted_total
+from fathomark_core.scoring import (
+    rating_for_total,
+    tactical_state_for_total,
+    weighted_total,
+)
 
 FRAMEWORK = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml")
 
