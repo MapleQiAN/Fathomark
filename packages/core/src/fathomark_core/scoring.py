@@ -9,7 +9,7 @@ class LensResult(BaseModel):
     model_config = {"frozen": True}
 
     lens: str
-    total: float | None          # None when vetoed/NR — never fabricate a number
+    total: float | None          # None only on NR (veto preserves the computed total)
     rating: str                  # spectrum grade, or "X" / "NR"
     tactical_state: str | None = None
     vetoed: bool = False
