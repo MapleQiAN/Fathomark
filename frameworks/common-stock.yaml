@@ -1,0 +1,160 @@
+# common-stock@1.0.0 — extracted from PersonalInvestment 选股评分框架 v3.3 (baseline
+# 普通经营公司 lens tables). Portfolio/position/trade rules intentionally excluded.
+id: common-stock
+version: "1.0.0"
+asset_type: common_operating_company
+
+scale:
+  min: 0.0
+  max: 10.0
+  step: 0.5
+
+factors:
+  - id: business_moat
+    name: 商业模式/护城河
+    category: fundamentals
+    anchors: {0: 无壁垒充分竞争单位经济性恶化, 4: 弱壁垒仅局部品牌渠道优势, 7: 至少具备网络效应/转换成本/成本优势之一且可数据验证, 10: 多重壁垒叠加竞争优势持续强化}
+  - id: financial_health
+    name: 财务健康度
+    category: fundamentals
+    anchors: {0: 现金跑道<12个月或利息覆盖<1.5倍或经营现金流为负且高度依赖外部融资, 4: 净负债/EBITDA约3-6倍或利息覆盖2-4倍现金跑道12-24个月, 7: 杠杆合理利息覆盖4-8倍未来24个月债务可覆盖经营现金流为正, 10: 净现金或负债极低利息覆盖>8倍自由现金流稳定为正}
+  - id: governance
+    name: 治理质量
+    category: fundamentals
+    anchors: {0: 实控人/管理层重大诚信问题或审计非标或关联交易严重, 4: 治理一般激励与披露质量普通, 7: 治理规范披露及时管理层稳定持股或合理长期激励, 10: 管理层与股东利益高度绑定资本配置记录优秀}
+  - id: policy_risk
+    name: 政策监管风险
+    category: fundamentals
+    anchors: {0: 行业强监管收紧商业模式可能被直接破坏, 4: 政策不确定性较高关键规则未落地, 7: 政策中性或边际改善公司具备合规缓冲, 10: 政策明确利好已落地公司为直接受益者}
+  - id: growth_sustainability
+    name: 成长可持续性
+    category: growth_valuation
+    anchors: {0: 收入/利润负增长或依赖单一客户/补贴/一次性提价, 4: 增速低于行业平均驱动力单一, 7: 增速达到或超行业平均至少2个可验证驱动力, 10: 增速持续超预期驱动力多元领先指标与单位经济性同步改善}
+  - id: valuation
+    name: 估值水平
+    category: growth_valuation
+    anchors: {0: 主/备用估值锚点落入0分档, 4: 落入4分档, 7: 落入7分档, 10: 落入10分档}
+  - id: earnings_quality
+    name: 盈利质量
+    category: growth_valuation
+    anchors: {0: ROE/ROIC<5%或利润主要来自一次性项目或负FCF源于经营恶化, 4: ROE/ROIC约5-10%现金转化率低且波动大, 7: ROE/ROIC约10-15%且FCF转化率>70%或ROIIC高于WACC, 10: ROE/ROIC>15%且FCF转化率>90%或ROIIC显著高于WACC且持续改善}
+  - id: trend_momentum
+    name: 趋势/动量
+    category: market
+    anchors: {0: 跌破关键均线相对强度持续走弱, 4: 震荡无方向相对强度中性, 7: 站上关键均线相对强度改善量价基本配合, 10: 多周期趋势共振向上突破有效量价同步确认}
+  - id: liquidity
+    name: 交易流动性
+    category: market
+    anchors: {0: 经常停牌/熔断买卖价差>1%盘口深度差, 4: 典型价差约0.3%-1%深度有限, 7: 典型价差约0.1%-0.3%常态交易顺畅, 10: 典型价差<0.1%成交活跃压力期仍有连续性}
+  - id: volatility_downside
+    name: 波动率/下行风险
+    category: market
+    anchors: {0: 近1年最大回撤>50%下行波动显著高于基准, 4: 最大回撤30%-50%尾部风险较高, 7: 最大回撤15%-30%波动与同类相当, 10: 最大回撤<15%下行波动低于基准}
+  - id: catalyst_window
+    name: 催化剂时间窗
+    category: market
+    anchors: {0: 无明确催化剂依赖远期叙事, 4: 催化剂存在但时点不确定预计>12个月, 7: 催化剂明确预计3-12个月内验证, 10: 催化剂已进入<3个月验证窗口且可观察指标清晰}
+
+lenses:
+  core:
+    business_moat: 0.22
+    financial_health: 0.22
+    governance: 0.12
+    policy_risk: 0.08
+    growth_sustainability: 0.05
+    valuation: 0.11
+    earnings_quality: 0.11
+    trend_momentum: 0.01
+    liquidity: 0.02
+    volatility_downside: 0.06
+    catalyst_window: 0.0
+  offensive:
+    business_moat: 0.15
+    financial_health: 0.08
+    governance: 0.08
+    policy_risk: 0.06
+    growth_sustainability: 0.24
+    valuation: 0.17
+    earnings_quality: 0.08
+    trend_momentum: 0.05
+    liquidity: 0.03
+    volatility_downside: 0.02
+    catalyst_window: 0.04
+  tactical:
+    business_moat: 0.03
+    financial_health: 0.08
+    governance: 0.02
+    policy_risk: 0.0
+    growth_sustainability: 0.0
+    valuation: 0.10
+    earnings_quality: 0.06
+    trend_momentum: 0.20
+    liquidity: 0.16
+    volatility_downside: 0.13
+    catalyst_window: 0.22
+
+# Rating spectrum, framework v3.3 §4.7. Left-closed right-open on total (0-100).
+ratings:
+  - {grade: S,  min: 90, max_exclusive: 101}
+  - {grade: A+, min: 85, max_exclusive: 90}
+  - {grade: A,  min: 80, max_exclusive: 85}
+  - {grade: B+, min: 75, max_exclusive: 80}
+  - {grade: B,  min: 70, max_exclusive: 75}
+  - {grade: B-, min: 65, max_exclusive: 70}
+  - {grade: C,  min: 60, max_exclusive: 65}
+  - {grade: D,  min: 0,  max_exclusive: 60}
+
+# Tactical execution states from tactical lens total (§4.3).
+tactical_states:
+  - {state: T1, min: 80, max_exclusive: 101}
+  - {state: T2, min: 65, max_exclusive: 80}
+  - {state: T3, min: 0,  max_exclusive: 65}
+
+veto_rules:
+  - factor: financial_health
+    below: 3.0
+    applies_to: [core, offensive, tactical]
+  - factor: governance
+    below: 3.0
+    applies_to: [core, offensive, tactical]
+  - factor: policy_risk
+    below: 3.0
+    applies_to: [core, offensive]   # tactical: flag only, not vetoed
+
+confidence_levels:      # §4.5; multiplier recorded, no position math in v1 core
+  high:         {multiplier: 1.0}
+  medium:       {multiplier: 0.75}
+  low:          {multiplier: 0.5}
+  insufficient: {multiplier: 0.0, forces_nr: true}
+
+# Defaults new in Fathomark (design §8 requires freshness rules; source framework
+# has none). Days relative to the run's research_date.
+freshness:
+  market_data: {max_age_days: 7}
+  filings:     {max_age_days: 130}
+  consensus:   {max_age_days: 90}
+  news:        {max_age_days: 30}
+
+valuation:
+  root_interval: [-0.20, 1.00]     # g_implied bisection interval
+  solver_tolerance: 1.0e-6
+  horizon_years: 5
+  sensitivity:
+    wacc_offsets: [-0.01, 0.0, 0.01]
+    terminal_growth_offsets: [-0.005, 0.0, 0.005]
+    min_valid_scenarios: 6
+    robust_max_width: 0.10         # pp width <= 10 -> robust
+    fragile_max_width: 0.20        # >20pp or other failures -> invalid
+  deviation:
+    denominator_floor: 0.05
+    anchors:
+      - {min: 0.30,  max_exclusive: null, score: 0.0}
+      - {min: 0.10,  max_exclusive: 0.30, score: 4.0}
+      - {min: -0.10, max_exclusive: 0.10, score: 7.0}
+      - {min: -0.20, max_exclusive: -0.10, score_low: 7.5, score_high: 9.5}  # linear interp
+      - {min: null,  max_exclusive: -0.20, score: 10.0}
+  backup_peg_anchors:
+    - {gt: 3.0, score: 0.0}                       # peg > 3 (strictly; peg == 3.0 falls to [2,3] band)
+    - {min: 2.0, max_exclusive: 3.0, score: 4.0}  # peg in [2,3]
+    - {min: 1.0, max_exclusive: 2.0, score: 7.0}
+    - {min: null, max_exclusive: 1.0, score: 10.0}  # peg < 1
