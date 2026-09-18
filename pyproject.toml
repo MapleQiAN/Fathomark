@@ -3,7 +3,10 @@ name = "fathomark"
 version = "0.1.0"
 description = "Fathomark 渊衡 — evidence-driven multi-agent equity scoring"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["fathomark-core"]
+
+[tool.uv.sources]
+fathomark-core = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]
