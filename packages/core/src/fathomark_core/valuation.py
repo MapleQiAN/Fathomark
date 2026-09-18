@@ -181,6 +181,9 @@ class ValuationScore(BaseModel):
     sensitivity: SensitivityResult | None
     switched_to_backup: bool
     switch_reason: str | None
+    # A fragile reverse-DCF sensitivity keeps the base-case score but must
+    # downgrade evidence confidence downstream (framework valuation rules).
+    confidence_downgrade: bool = False
 
 
 def _backup(peg: float | None, cfg: ValuationConfig, reason: str) -> "ValuationScore":
@@ -234,4 +237,9 @@ def score_valuation(
         score=score_deviation(deviation(base_g, g_expected, floor), cfg),
         method=method, implied_growth=base_g, sensitivity=sensitivity,
         switched_to_backup=False, switch_reason=None,
+        confidence_downgrade=(
+            method == "reverse_dcf"
+            and sensitivity is not None
+            and sensitivity.classification == "fragile"
+        ),
     )

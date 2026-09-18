@@ -44,7 +44,11 @@ def evaluate(
 ) -> ScoreSnapshot:
     if scope.framework_ref != framework.framework_ref:
         raise ValueError(f"scope framework {scope.framework_ref} != loaded {framework.framework_ref}")
-    evidence_index = {ev.id: ev.published_date for ev in evidence}
+    evidence_index: dict = {}
+    for ev in evidence:
+        if ev.id in evidence_index:
+            raise ValueError(f"duplicate evidence id: {ev.id}")
+        evidence_index[ev.id] = ev.published_date
     seen: set[str] = set()
     for p in proposals:
         if p.factor in seen:

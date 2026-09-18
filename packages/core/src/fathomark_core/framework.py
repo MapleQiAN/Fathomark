@@ -107,8 +107,12 @@ class Framework(BaseModel):
                 errors.append(f"lens {lens_name} must weight every factor")
         for band_set, label in ((self.ratings, "rating"), (self.tactical_states, "tactical")):
             covered = sorted((b.min, b.max_exclusive) for b in band_set)
-            if covered[0][0] != 0 or any(covered[i][1] != covered[i + 1][0] for i in range(len(covered) - 1)):
-                errors.append(f"{label} bands must be contiguous from 0 with no gaps")
+            if (
+                covered[0][0] != 0
+                or any(covered[i][1] != covered[i + 1][0] for i in range(len(covered) - 1))
+                or covered[-1][1] < 100
+            ):
+                errors.append(f"{label} bands must be contiguous from 0 and reach at least 100 with no gaps")
         for rule in self.veto_rules:
             if rule.factor not in known:
                 errors.append(f"veto rule references unknown factor {rule.factor}")
