@@ -1,41 +1,230 @@
-# Fathomark 渊衡
+<p align="center">
+  <img src="docs/assets/fathomark-mark.svg" width="132" alt="Fathomark 渊衡 mark" />
+</p>
 
-Fathomark（中文名“渊衡”）是一套面向上市公司研究的开源、多 Agent、证据驱动评分系统。它把 Agent 的证据采集与研究判断，和确定性的权重计算、Veto、评级映射、版本治理分开，并要求人工批准后才能发布正式评级。
+<h1 align="center">Fathomark · 渊衡</h1>
 
-> 深研有据，权衡有度。
+<p align="center">
+  <strong>深研有据，权衡有度。</strong><br />
+  Evidence-first multi-agent equity research for people who want to see the reasoning.
+</p>
 
-## 当前状态
+<p align="center">
+  <a href="docs/design/2026-09-18-fathomark-design.md"><img src="https://img.shields.io/badge/status-design%20ready-102A43?style=for-the-badge&labelColor=0B172A" alt="Status: design ready" /></a>
+  <img src="https://img.shields.io/badge/agents-specialists%20%2B%20red%20team-C9973E?style=for-the-badge&labelColor=0B172A" alt="Specialist agents and red team" />
+  <img src="https://img.shields.io/badge/output-HTML%20%7C%20MD%20%7C%20PDF-2F6F73?style=for-the-badge&labelColor=0B172A" alt="HTML, Markdown and PDF reports" />
+</p>
 
-项目处于设计完成、等待实施计划阶段。当前仓库仅包含已经确认的架构设计与后续待办，不包含可运行的业务代码。
+<p align="center">
+  Fathomark turns a stock research question into a traceable chain of evidence,<br />
+  specialist judgments, deterministic scoring, red-team review and a human-approved report.
+</p>
 
-## v1 范围
+<br />
 
-- 单只普通美股上市经营公司的深度评分；
-- Headless REST API 为完整产品接口；
-- 可选 CLI 和 Vue 审核台；
-- 人工批准、不可变版本与完整审计记录；
-- JSON、专业 HTML、规范 Markdown 和美观 PDF；
-- OpenAI、Anthropic 与 OpenAI-compatible 模型适配；
-- SEC EDGAR/XBRL、公司 IR 和可替换行情 Provider；
-- SQLite 本地模式与 PostgreSQL 服务模式。
+> [!IMPORTANT]
+> Fathomark is currently a design-complete, implementation-pending open-source project. The repository defines the contracts and governance first; it does not yet ship a runnable scoring service.
 
-v1 不包含 ETF、银行保险、周期资源、REIT、批量排名、组合优化、自动交易、多租户 SaaS 和官方 A/H 股自动数据源。
+## The idea in one sentence
 
-## 文档
+**Let language models investigate the evidence, let deterministic code calculate the score, and let a human decide when a result becomes official.**
 
-- [系统设计](docs/design/2026-09-18-fathomark-design.md)
-- [后续待办](TODO.md)
+That boundary is the heart of 渊衡. Agents can read, compare, explain and challenge. They cannot silently change weights, fill missing data with a story, or publish an unreviewed rating.
 
-## 核心原则
+## What makes it different
 
-1. Agent 负责采证、提出判断和发现反例，不负责最终机械算分。
-2. 相同结构化输入必须产生完全相同的分数、Veto 和评级。
-3. 未经人工批准的结果只能是草稿，不能成为正式评级。
-4. 每个因子结论都必须回溯到带日期和来源的证据。
-5. 数据不足时输出 `NR`，不得用叙事补齐不存在的数据。
-6. 正式版本不可原地修改，只能由新版本替代。
-7. 评分是研究与决策支持，不是收益预测或交易指令。
+<table>
+  <tr>
+    <td width="33%" valign="top"><strong>01 · Evidence ledger</strong><br /><sub>Every factor conclusion points to dated sources, excerpts, provenance and a confidence level.</sub></td>
+    <td width="33%" valign="top"><strong>02 · Deterministic core</strong><br /><sub>The same structured inputs always produce the same score, Veto result, grade and version hash.</sub></td>
+    <td width="33%" valign="top"><strong>03 · Human gate</strong><br /><sub>Draft findings stay drafts until a reviewer approves an immutable release.</sub></td>
+  </tr>
+</table>
 
-## 许可证方向
+## From question to report
 
-计划采用 Apache License 2.0；示例报告计划采用 CC BY 4.0。正式发布前需补齐许可证、NOTICE、贡献与安全政策文件。
+```mermaid
+flowchart LR
+    Q[Research question] --> C[Research contract]
+    C --> E[Evidence collection]
+    E --> L[Specialist lenses]
+    L --> S[Deterministic scoring]
+    S --> R[Red-team review]
+    R --> H{Human approval}
+    H -->|revise| E
+    H -->|approve| P[Immutable report package]
+    P --> J[JSON]
+    P --> M[Markdown]
+    P --> HT[HTML]
+    P --> PDF[Print-ready PDF]
+```
+
+The system is intentionally a pipeline with explicit handoffs. A failed provider, weak source or unresolved contradiction becomes visible state, rather than disappearing into a final paragraph.
+
+## Architecture at a glance
+
+```mermaid
+flowchart TB
+    subgraph Interface[Interfaces]
+      API[Headless REST API]
+      CLI[Optional CLI]
+      WEB[Optional review console]
+    end
+
+    subgraph Orchestration[Orchestration]
+      RUN[Research run state machine]
+      BUS[Event and audit log]
+      GATE[Review and approval gate]
+    end
+
+    subgraph Intelligence[Agent layer]
+      FACTS[Fact collector]
+      BUSINESS[Business quality]
+      FIN[Financial quality]
+      VAL[Valuation]
+      RISK[Risk and governance]
+      TEAM[Red team]
+    end
+
+    subgraph Core[Deterministic core]
+      SCHEMA[Versioned schemas]
+      SCORE[Weighted score engine]
+      VETO[Veto and NR rules]
+      GRADE[Grade mapping]
+      ART[Artifact renderer]
+    end
+
+    API --> RUN
+    CLI --> API
+    WEB --> API
+    RUN --> BUS
+    RUN --> FACTS
+    RUN --> BUSINESS
+    RUN --> FIN
+    RUN --> VAL
+    RUN --> RISK
+    FACTS --> SCHEMA
+    BUSINESS --> SCHEMA
+    FIN --> SCHEMA
+    VAL --> SCHEMA
+    RISK --> SCHEMA
+    TEAM --> GATE
+    SCHEMA --> SCORE --> VETO --> GRADE --> GATE --> ART
+```
+
+## What v1 covers
+
+| Area | v1 decision |
+| --- | --- |
+| Research unit | One ordinary US-listed operating company per run |
+| Product surface | Headless REST API first; CLI and Vue review console are optional clients |
+| Scoring | 11-factor, 100-point framework with confidence, Veto, `NR` and versioning |
+| Evidence | SEC EDGAR/XBRL, company investor relations and replaceable market-data providers |
+| Models | OpenAI, Anthropic and OpenAI-compatible adapters |
+| Storage | SQLite for local work; PostgreSQL for a service deployment |
+| Reports | JSON, polished HTML, well-formed Markdown and print-generated PDF |
+| Approval | Human approval is required before an official rating is published |
+
+Out of scope for v1: ETFs, banks and insurers, cyclical resources, REITs, batch ranking, portfolio optimization, automated trading, multi-tenant SaaS and official A/H-share data connectors.
+
+## A report should answer four questions
+
+<p align="center">
+  <img src="docs/assets/report-ribbon.svg" alt="Fathomark report sections: thesis, score, risks and evidence" width="100%" />
+</p>
+
+| Reader need | Fathomark report section |
+| --- | --- |
+| What is the current view? | Thesis, grade, score and confidence |
+| Why did it get that view? | Factor cards with evidence and counter-evidence |
+| What could invalidate it? | Vetoes, open questions, risks and red-team objections |
+| Can I audit the result later? | Sources, dates, framework version, input hash and approval record |
+
+The HTML report is the visual master. Markdown remains portable, JSON remains machine-readable, and PDF is generated from the same print layout so the four formats do not drift apart.
+
+## Designed as a backend other systems can call
+
+The core workflow is API-first. A future client can create a run, poll its state, inspect evidence, request review, approve a version and fetch report artifacts without knowing how the web console is built.
+
+```http
+POST /v1/research-runs
+Content-Type: application/json
+
+{
+  "symbol": "AAPL",
+  "exchange": "NASDAQ",
+  "research_role": "core",
+  "as_of": "2026-09-18",
+  "framework_version": "common-stock.v1"
+}
+```
+
+```text
+202 Accepted
+Location: /v1/research-runs/run_01J...
+```
+
+The public API will expose stable contracts for `draft`, `needs_review`, `approved`, `failed` and `cancelled` states. A consumer can safely treat an approved result as a versioned research artifact rather than as a live trading instruction.
+
+## Repository map
+
+```text
+fathomark/
+├── packages/
+│   ├── core/          # schemas, framework rules, scoring, Veto and grade mapping
+│   ├── agents/        # specialist contracts and orchestration
+│   ├── providers/     # filings, IR and market-data adapters
+│   ├── reports/       # JSON, HTML, Markdown and PDF renderers
+│   └── api/           # REST service and background worker entry points
+├── frameworks/        # versioned scoring definitions
+├── docs/              # design notes and integration guidance
+├── examples/          # recorded provider responses and sample reports
+└── tests/             # contract, deterministic-core and integration tests
+```
+
+## Start with the design
+
+The implementation is intentionally staged behind the contracts. Read these in order:
+
+1. [System design](docs/design/2026-09-18-fathomark-design.md) — architecture, data contracts, scoring governance and report formats.
+2. [Roadmap](TODO.md) — milestones, acceptance criteria and the remaining project work.
+
+When implementation begins, the first vertical slice will be a single-symbol run that can collect recorded evidence, calculate a deterministic score and render the same approved result as JSON, HTML, Markdown and PDF.
+
+## Get the repository
+
+```bash
+git clone git@github.com:MapleQiAN/Fathomark.git
+cd Fathomark
+```
+
+## Principles
+
+1. Agents collect evidence, make explicit judgments and surface counterexamples; deterministic code owns arithmetic and state transitions.
+2. Identical structured inputs produce identical scores, Veto results and grades.
+3. Missing evidence produces `NR`; prose cannot manufacture a number.
+4. Every factor conclusion is traceable to dated, source-linked evidence.
+5. An approved version is immutable; a change creates a new version.
+6. Fathomark is research and decision support, not a return forecast or trading instruction.
+
+## Project status
+
+| Milestone | State |
+| --- | --- |
+| Brand, architecture and contracts | ✅ Defined |
+| Deterministic scoring core | ◻ Planned |
+| Agent adapters and provider recordings | ◻ Planned |
+| API and worker | ◻ Planned |
+| HTML / Markdown / PDF renderer | ◻ Planned |
+| PersonalInvestment adapter | ◻ Planned |
+
+## Contributing
+
+The project will welcome contributions once the first implementation slice lands. Until then, design feedback is most useful when it is concrete: point to a contract, state transition, evidence rule or report section and describe the failure mode it prevents.
+
+Planned community files include `LICENSE` (Apache-2.0), `NOTICE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` and `DISCLAIMER.md`.
+
+<p align="center">
+  <sub>Fathomark · 渊衡</sub><br />
+  <em>Deep research, measured judgment.</em>
+</p>

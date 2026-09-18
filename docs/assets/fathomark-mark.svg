@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
+  <title id="title">Fathomark 渊衡 mark</title>
+  <desc id="desc">A deep blue circular mark with three golden measured arcs.</desc>
+  <defs>
+    <linearGradient id="ink" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#102A43"/>
+      <stop offset="1" stop-color="#07111F"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#F1D08A"/>
+      <stop offset="1" stop-color="#C9973E"/>
+    </linearGradient>
+  </defs>
+  <circle cx="120" cy="120" r="108" fill="url(#ink)"/>
+  <circle cx="120" cy="120" r="95" fill="none" stroke="#31556F" stroke-width="2" opacity=".8"/>
+  <path d="M48 137c24-43 60-65 108-65 16 0 29 3 41 8" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round"/>
+  <path d="M55 160c20-27 47-41 81-41 25 0 43 6 58 18" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round"/>
+  <path d="M72 180c15-13 32-20 52-20 15 0 28 3 40 10" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="161" cy="71" r="7" fill="#F5F1E8"/>
+</svg>

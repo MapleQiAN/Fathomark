@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 260" role="img" aria-labelledby="title desc">
+  <title id="title">Fathomark report preview</title>
+  <desc id="desc">Four report cards for thesis, score, risks and evidence.</desc>
+  <rect width="1120" height="260" rx="24" fill="#0B172A"/>
+  <path d="M0 205h1120" stroke="#31556F" stroke-width="1" opacity=".65"/>
+  <circle cx="930" cy="-20" r="210" fill="#102A43" opacity=".7"/>
+  <circle cx="1020" cy="250" r="170" fill="#12374A" opacity=".55"/>
+  <g font-family="Inter, Arial, sans-serif">
+    <text x="48" y="54" fill="#F5F1E8" font-size="16" letter-spacing="3">FATHOMARK / REPORT PREVIEW</text>
+    <text x="48" y="104" fill="#F5F1E8" font-size="34" font-weight="700">Evidence, made legible.</text>
+    <text x="48" y="136" fill="#B9C8D4" font-size="16">A report that shows the view, the score, the objections and the trail.</text>
+    <g transform="translate(48 174)">
+      <rect width="220" height="44" rx="9" fill="#F5F1E8"/>
+      <rect x="236" width="220" height="44" rx="9" fill="#12374A" stroke="#C9973E" stroke-width="1.5"/>
+      <rect x="472" width="220" height="44" rx="9" fill="#12374A" stroke="#31556F" stroke-width="1.5"/>
+      <rect x="708" width="220" height="44" rx="9" fill="#12374A" stroke="#31556F" stroke-width="1.5"/>
+      <text x="20" y="28" fill="#0B172A" font-size="14" font-weight="700" letter-spacing="1.4">THESIS</text>
+      <text x="256" y="28" fill="#F1D08A" font-size="14" font-weight="700" letter-spacing="1.4">SCORE</text>
+      <text x="492" y="28" fill="#B9C8D4" font-size="14" font-weight="700" letter-spacing="1.4">RISKS</text>
+      <text x="728" y="28" fill="#B9C8D4" font-size="14" font-weight="700" letter-spacing="1.4">EVIDENCE</text>
+    </g>
+  </g>
+</svg>
