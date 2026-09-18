@@ -95,3 +95,19 @@ def test_evidence_after_cutoff_rejected():
     with pytest.raises(ProposalError, match="cutoff"):
         validate_proposal(_proposal(), framework=FRAMEWORK,
                           evidence=EVIDENCE, data_cutoff=date(2026, 8, 31))
+
+
+def test_evidence_after_cutoff_rejected_with_as_of_within_cutoff():
+    # Isolates the evidence-published-after-cutoff branch: as_of_date is within
+    # the cutoff, so only the evidence-date check can fire.
+    with pytest.raises(ProposalError, match="cutoff"):
+        validate_proposal(_proposal(as_of_date=date(2026, 8, 31)), framework=FRAMEWORK,
+                          evidence=EVIDENCE, data_cutoff=date(2026, 8, 31))
+
+
+def test_on_step_score_outside_range_rejected():
+    # 10.5 is on the 0.5 step grid but above scale.max — isolates the range
+    # half of the score check.
+    with pytest.raises(ProposalError, match="scale"):
+        validate_proposal(_proposal(proposed_score=10.5), framework=FRAMEWORK,
+                          evidence=EVIDENCE, data_cutoff=CUTOFF)
