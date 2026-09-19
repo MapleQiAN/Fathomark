@@ -94,13 +94,22 @@ def test_run_row_roundtrip():
     sf = create_session_factory("sqlite:///:memory:")
     init_db(sf)
     with sf() as s:
-        s.add(ResearchRunRow(
-            id="run_1", idempotency_key="k1", symbol="ADBE", exchange="NASDAQ",
-            research_role="core", horizon="3y",
-            research_date=date(2026, 9, 3), data_cutoff=date(2026, 9, 3),
-            framework_ref="common-stock@1.0.0", state="created",
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-        ))
+        s.add(
+            ResearchRunRow(
+                id="run_1",
+                idempotency_key="k1",
+                symbol="ADBE",
+                exchange="NASDAQ",
+                research_role="core",
+                horizon="3y",
+                research_date=date(2026, 9, 3),
+                data_cutoff=date(2026, 9, 3),
+                framework_ref="common-stock@1.0.0",
+                state="created",
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
+        )
         s.commit()
         row = s.get(ResearchRunRow, "run_1")
         assert row.symbol == "ADBE" and row.state == "created" and row.lock_version == 0
@@ -147,7 +156,15 @@ and root dependencies become `["fathomark-core", "fathomark-storage", "fathomark
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -302,7 +319,12 @@ from fathomark_storage.state_machine import InvalidTransition, RunState, transit
 
 def test_happy_path_created_to_approved():
     s = RunState.CREATED
-    for target in (RunState.COLLECTING, RunState.ANALYZING, RunState.DRAFT, RunState.APPROVED):
+    for target in (
+        RunState.COLLECTING,
+        RunState.ANALYZING,
+        RunState.DRAFT,
+        RunState.APPROVED,
+    ):
         s = transition(s, target)
     assert s == RunState.APPROVED
 
@@ -360,13 +382,33 @@ TERMINAL_STATES = frozenset(
 )
 
 TRANSITIONS: dict[RunState, frozenset[RunState]] = {
-    RunState.CREATED: frozenset({RunState.SCOPED, RunState.COLLECTING, RunState.CANCELLED, RunState.FAILED}),
-    RunState.SCOPED: frozenset({RunState.COLLECTING, RunState.CANCELLED, RunState.FAILED}),
-    RunState.COLLECTING: frozenset({RunState.ANALYZING, RunState.CANCELLED, RunState.FAILED}),
-    RunState.ANALYZING: frozenset({RunState.AUDITING, RunState.DRAFT, RunState.NEEDS_REVIEW, RunState.CANCELLED, RunState.FAILED}),
-    RunState.AUDITING: frozenset({RunState.DRAFT, RunState.NEEDS_REVIEW, RunState.CANCELLED, RunState.FAILED}),
-    RunState.NEEDS_REVIEW: frozenset({RunState.DRAFT, RunState.CANCELLED, RunState.FAILED}),
-    RunState.DRAFT: frozenset({RunState.APPROVED, RunState.NEEDS_REVIEW, RunState.CANCELLED}),
+    RunState.CREATED: frozenset(
+        {RunState.SCOPED, RunState.COLLECTING, RunState.CANCELLED, RunState.FAILED}
+    ),
+    RunState.SCOPED: frozenset(
+        {RunState.COLLECTING, RunState.CANCELLED, RunState.FAILED}
+    ),
+    RunState.COLLECTING: frozenset(
+        {RunState.ANALYZING, RunState.CANCELLED, RunState.FAILED}
+    ),
+    RunState.ANALYZING: frozenset(
+        {
+            RunState.AUDITING,
+            RunState.DRAFT,
+            RunState.NEEDS_REVIEW,
+            RunState.CANCELLED,
+            RunState.FAILED,
+        }
+    ),
+    RunState.AUDITING: frozenset(
+        {RunState.DRAFT, RunState.NEEDS_REVIEW, RunState.CANCELLED, RunState.FAILED}
+    ),
+    RunState.NEEDS_REVIEW: frozenset(
+        {RunState.DRAFT, RunState.CANCELLED, RunState.FAILED}
+    ),
+    RunState.DRAFT: frozenset(
+        {RunState.APPROVED, RunState.NEEDS_REVIEW, RunState.CANCELLED}
+    ),
     RunState.APPROVED: frozenset({RunState.SUPERSEDED}),
     RunState.FAILED: frozenset({RunState.COLLECTING, RunState.CANCELLED}),
     RunState.CANCELLED: frozenset(),
@@ -433,8 +475,12 @@ from fathomark_storage.repository import ConcurrencyError, RunRepository
 from fathomark_storage.state_machine import InvalidTransition, RunState
 
 SCOPE = ScopeSnapshot(
-    symbol="ADBE", exchange="NASDAQ", research_role="core", horizon="3y",
-    research_date=date(2026, 9, 3), data_cutoff=date(2026, 9, 3),
+    symbol="ADBE",
+    exchange="NASDAQ",
+    research_role="core",
+    horizon="3y",
+    research_date=date(2026, 9, 3),
+    data_cutoff=date(2026, 9, 3),
     framework_ref="common-stock@1.0.0",
 )
 
@@ -515,12 +561,19 @@ class RunRepository:
             return existing, False
         now = datetime.now(UTC)
         row = ResearchRunRow(
-            id=_uid("run"), idempotency_key=idem_key,
-            symbol=scope.symbol, exchange=scope.exchange,
-            research_role=scope.research_role, horizon=scope.horizon,
-            research_date=scope.research_date, data_cutoff=scope.data_cutoff,
-            framework_ref=scope.framework_ref, state=RunState.CREATED.value,
-            lock_version=0, created_at=now, updated_at=now,
+            id=_uid("run"),
+            idempotency_key=idem_key,
+            symbol=scope.symbol,
+            exchange=scope.exchange,
+            research_role=scope.research_role,
+            horizon=scope.horizon,
+            research_date=scope.research_date,
+            data_cutoff=scope.data_cutoff,
+            framework_ref=scope.framework_ref,
+            state=RunState.CREATED.value,
+            lock_version=0,
+            created_at=now,
+            updated_at=now,
         )
         self.session.add(row)
         self.session.flush()
@@ -542,9 +595,13 @@ class RunRepository:
     def scope_of(self, run_id: str) -> ScopeSnapshot:
         r = self.get(run_id)
         return ScopeSnapshot(
-            symbol=r.symbol, exchange=r.exchange, research_role=r.research_role,
-            horizon=r.horizon, research_date=r.research_date,
-            data_cutoff=r.data_cutoff, framework_ref=r.framework_ref,
+            symbol=r.symbol,
+            exchange=r.exchange,
+            research_role=r.research_role,
+            horizon=r.horizon,
+            research_date=r.research_date,
+            data_cutoff=r.data_cutoff,
+            framework_ref=r.framework_ref,
         )
 
     def add_evidence(self, run_id: str, items: list[EvidenceItem]) -> int:
@@ -558,17 +615,27 @@ class RunRepository:
         for it in items:
             if it.id in existing:
                 raise ValueError(f"duplicate evidence id: {it.id}")
-            self.session.add(EvidenceItemRow(
-                run_id=run_id, evidence_id=it.id, source_name=it.source_name,
-                source_class=it.source_class, url=it.url,
-                published_date=it.published_date, data_period_end=it.data_period_end,
-                accessed_at=it.accessed_at, grade=it.grade,
-                content_hash=it.content_hash, excerpt=it.excerpt,
-            ))
+            self.session.add(
+                EvidenceItemRow(
+                    run_id=run_id,
+                    evidence_id=it.id,
+                    source_name=it.source_name,
+                    source_class=it.source_class,
+                    url=it.url,
+                    published_date=it.published_date,
+                    data_period_end=it.data_period_end,
+                    accessed_at=it.accessed_at,
+                    grade=it.grade,
+                    content_hash=it.content_hash,
+                    excerpt=it.excerpt,
+                )
+            )
         self.session.flush()
         return len(items)
 
-    def add_proposals(self, run_id: str, proposals: list[FactorProposal], origin: str = "agent") -> None:
+    def add_proposals(
+        self, run_id: str, proposals: list[FactorProposal], origin: str = "agent"
+    ) -> None:
         self.get(run_id)
         existing = {
             p.factor
@@ -579,15 +646,25 @@ class RunRepository:
         for p in proposals:
             if p.factor in existing:
                 raise ValueError(f"duplicate proposal for factor {p.factor}")
-            self.session.add(FactorProposalRow(
-                run_id=run_id, factor=p.factor, proposed_score=p.proposed_score,
-                rationale=p.rationale, evidence_ids=p.evidence_ids,
-                counter_evidence_ids=p.counter_evidence_ids, confidence=p.confidence,
-                missing_data=p.missing_data, as_of_date=p.as_of_date, origin=origin,
-            ))
+            self.session.add(
+                FactorProposalRow(
+                    run_id=run_id,
+                    factor=p.factor,
+                    proposed_score=p.proposed_score,
+                    rationale=p.rationale,
+                    evidence_ids=p.evidence_ids,
+                    counter_evidence_ids=p.counter_evidence_ids,
+                    confidence=p.confidence,
+                    missing_data=p.missing_data,
+                    as_of_date=p.as_of_date,
+                    origin=origin,
+                )
+            )
         self.session.flush()
 
-    def replace_proposal_score(self, run_id: str, factor: str, score: float, rationale: str) -> None:
+    def replace_proposal_score(
+        self, run_id: str, factor: str, score: float, rationale: str
+    ) -> None:
         row = self.session.scalar(
             select(FactorProposalRow).where(
                 FactorProposalRow.run_id == run_id, FactorProposalRow.factor == factor
@@ -606,10 +683,16 @@ class RunRepository:
         )
         return [
             EvidenceItem(
-                id=r.evidence_id, source_name=r.source_name, source_class=r.source_class,
-                url=r.url, published_date=r.published_date,
-                data_period_end=r.data_period_end, accessed_at=r.accessed_at,
-                grade=r.grade, content_hash=r.content_hash, excerpt=r.excerpt,
+                id=r.evidence_id,
+                source_name=r.source_name,
+                source_class=r.source_class,
+                url=r.url,
+                published_date=r.published_date,
+                data_period_end=r.data_period_end,
+                accessed_at=r.accessed_at,
+                grade=r.grade,
+                content_hash=r.content_hash,
+                excerpt=r.excerpt,
             )
             for r in rows
         ]
@@ -620,21 +703,29 @@ class RunRepository:
         )
         return [
             FactorProposal(
-                factor=r.factor, proposed_score=r.proposed_score, rationale=r.rationale,
-                evidence_ids=r.evidence_ids, counter_evidence_ids=r.counter_evidence_ids,
-                confidence=r.confidence, missing_data=r.missing_data,
+                factor=r.factor,
+                proposed_score=r.proposed_score,
+                rationale=r.rationale,
+                evidence_ids=r.evidence_ids,
+                counter_evidence_ids=r.counter_evidence_ids,
+                confidence=r.confidence,
+                missing_data=r.missing_data,
                 as_of_date=r.as_of_date,
             )
             for r in rows
         ]
 
     def save_draft_snapshot(self, run_id: str, snapshot: ScoreSnapshot) -> None:
-        self.session.add(ScoreSnapshotRow(
-            id=_uid("snap"), run_id=run_id,
-            snapshot_json=snapshot.model_dump(mode="json"),
-            content_hash=snapshot.content_hash, kind="draft",
-            created_at=datetime.now(UTC),
-        ))
+        self.session.add(
+            ScoreSnapshotRow(
+                id=_uid("snap"),
+                run_id=run_id,
+                snapshot_json=snapshot.model_dump(mode="json"),
+                content_hash=snapshot.content_hash,
+                kind="draft",
+                created_at=datetime.now(UTC),
+            )
+        )
         self.session.flush()
 
     def latest_snapshot(self, run_id: str) -> ScoreSnapshotRow | None:
@@ -645,17 +736,29 @@ class RunRepository:
             .limit(1)
         )
 
-    def record_decision(self, run_id, action, factor, agent_score, final_score, reason, actor) -> None:
-        self.session.add(HumanDecisionRow(
-            id=_uid("dec"), run_id=run_id, action=action, factor=factor,
-            agent_score=agent_score, final_score=final_score,
-            reason=reason, actor=actor, created_at=datetime.now(UTC),
-        ))
+    def record_decision(
+        self, run_id, action, factor, agent_score, final_score, reason, actor
+    ) -> None:
+        self.session.add(
+            HumanDecisionRow(
+                id=_uid("dec"),
+                run_id=run_id,
+                action=action,
+                factor=factor,
+                agent_score=agent_score,
+                final_score=final_score,
+                reason=reason,
+                actor=actor,
+                created_at=datetime.now(UTC),
+            )
+        )
         self.session.flush()
 
     def create_version(self, run_id: str, idem_key: str, expected_lock: int):
         existing = self.session.scalar(
-            select(ResearchVersionRow).where(ResearchVersionRow.idempotency_key == idem_key)
+            select(ResearchVersionRow).where(
+                ResearchVersionRow.idempotency_key == idem_key
+            )
         )
         if existing is not None:
             return existing, False
@@ -665,13 +768,19 @@ class RunRepository:
         snap = self.latest_snapshot(run_id)
         if snap is None:
             raise LookupError("no draft snapshot to approve")
-        count = len(self.session.scalars(
-            select(ResearchVersionRow).where(ResearchVersionRow.run_id == run_id)
-        ).all())
+        count = len(
+            self.session.scalars(
+                select(ResearchVersionRow).where(ResearchVersionRow.run_id == run_id)
+            ).all()
+        )
         version = ResearchVersionRow(
-            id=_uid("ver"), run_id=run_id, version_no=count + 1,
-            snapshot_json=snap.snapshot_json, content_hash=snap.content_hash,
-            idempotency_key=idem_key, created_at=datetime.now(UTC),
+            id=_uid("ver"),
+            run_id=run_id,
+            version_no=count + 1,
+            snapshot_json=snap.snapshot_json,
+            content_hash=snap.content_hash,
+            idempotency_key=idem_key,
+            created_at=datetime.now(UTC),
         )
         self.session.add(version)
         self.advance(run_id, RunState.APPROVED)
@@ -728,8 +837,12 @@ def client(tmp_path):
 
 
 CREATE_PAYLOAD = {
-    "symbol": "ADBE", "exchange": "NASDAQ", "research_role": "core",
-    "horizon": "3y", "research_date": "2026-09-03", "data_cutoff": "2026-09-03",
+    "symbol": "ADBE",
+    "exchange": "NASDAQ",
+    "research_role": "core",
+    "horizon": "3y",
+    "research_date": "2026-09-03",
+    "data_cutoff": "2026-09-03",
     "framework_ref": "common-stock@1.0.0",
 }
 ```
@@ -740,8 +853,11 @@ from .conftest import CREATE_PAYLOAD
 
 
 def test_create_run_returns_201(client):
-    r = client.post("/v1/research-runs", json=CREATE_PAYLOAD,
-                    headers={"Idempotency-Key": "create-1"})
+    r = client.post(
+        "/v1/research-runs",
+        json=CREATE_PAYLOAD,
+        headers={"Idempotency-Key": "create-1"},
+    )
     assert r.status_code == 201
     body = r.json()
     assert body["state"] == "created" and body["symbol"] == "ADBE"
@@ -754,10 +870,16 @@ def test_create_run_requires_idempotency_key(client):
 
 
 def test_create_run_replay_returns_same_run(client):
-    r1 = client.post("/v1/research-runs", json=CREATE_PAYLOAD,
-                     headers={"Idempotency-Key": "create-2"})
-    r2 = client.post("/v1/research-runs", json=CREATE_PAYLOAD,
-                     headers={"Idempotency-Key": "create-2"})
+    r1 = client.post(
+        "/v1/research-runs",
+        json=CREATE_PAYLOAD,
+        headers={"Idempotency-Key": "create-2"},
+    )
+    r2 = client.post(
+        "/v1/research-runs",
+        json=CREATE_PAYLOAD,
+        headers={"Idempotency-Key": "create-2"},
+    )
     assert r1.status_code == 201 and r2.status_code == 200
     assert r1.json()["id"] == r2.json()["id"]
 
@@ -902,11 +1024,18 @@ def _repo(request: Request) -> RunRepository:
 
 def _run_response(row) -> RunResponse:
     return RunResponse(
-        id=row.id, state=row.state, lock_version=row.lock_version,
-        symbol=row.symbol, exchange=row.exchange, research_role=row.research_role,
-        horizon=row.horizon, research_date=row.research_date,
-        data_cutoff=row.data_cutoff, framework_ref=row.framework_ref,
-        created_at=row.created_at, updated_at=row.updated_at,
+        id=row.id,
+        state=row.state,
+        lock_version=row.lock_version,
+        symbol=row.symbol,
+        exchange=row.exchange,
+        research_role=row.research_role,
+        horizon=row.horizon,
+        research_date=row.research_date,
+        data_cutoff=row.data_cutoff,
+        framework_ref=row.framework_ref,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
     )
 
 
@@ -918,7 +1047,9 @@ def create_run(
     idempotency_key: str | None = Header(default=None),
 ):
     if not idempotency_key:
-        return JSONResponse({"detail": "Idempotency-Key header required"}, status_code=400)
+        return JSONResponse(
+            {"detail": "Idempotency-Key header required"}, status_code=400
+        )
     repo = _repo(request)
     row, created = repo.create_run(
         idem_key=idempotency_key, scope=ScopeSnapshot(**payload.model_dump())
@@ -1044,30 +1175,45 @@ Route handlers validate `EvidenceItem.model_validate` / `FactorProposal.model_va
 - Rules (spec §11): state must be `draft`; `expected_lock_version` must equal `lock_version` else 409; action `modify` requires `factor` + `final_score` and records agent score, final score, reason, actor; after `modify`, recompute happens by client calling `compute` again — so `modify` regresses state `draft → analyzing` via... **no**: illegal per machine. Instead `modify` updates the proposal in place and immediately re-runs `evaluate` internally, storing a new draft snapshot (state stays `draft`, `lock_version` bumps). `accept` is a no-op record. `return` moves `draft → needs_review`.
 
 ```python
-    def review(self, run_id: str, req) -> None:
-        row = self._require_state(run_id, RunState.DRAFT)
-        if row.lock_version != req.expected_lock_version:
-            raise ConcurrencyError(req.expected_lock_version, row.lock_version)
-        if req.action == "modify":
-            if req.factor is None or req.final_score is None:
-                raise ProposalError("modify requires factor and final_score")
-            current = {p.factor: p for p in self.repo.proposals_of(run_id)}[req.factor]
-            self.repo.record_decision(run_id, "modify", req.factor,
-                                      current.proposed_score, req.final_score,
-                                      req.reason, req.actor)
-            self.repo.replace_proposal_score(run_id, req.factor, req.final_score, req.reason)
-            framework = load_framework(self.framework_dir / "common-stock.yaml")
-            snapshot = evaluate(framework=framework, scope=self.repo.scope_of(run_id),
-                                evidence=self.repo.evidence_of(run_id),
-                                proposals=self.repo.proposals_of(run_id))
-            self.repo.save_draft_snapshot(run_id, snapshot)
-        elif req.action == "accept":
-            self.repo.record_decision(run_id, "accept", req.factor, None, None, req.reason, req.actor)
-        elif req.action == "return":
-            self.repo.record_decision(run_id, "return", None, None, None, req.reason, req.actor)
-            self.repo.advance(run_id, RunState.NEEDS_REVIEW)
-        if req.action != "return":
-            self.repo.advance(run_id, RunState.DRAFT)  # bumps lock_version
+def review(self, run_id: str, req) -> None:
+    row = self._require_state(run_id, RunState.DRAFT)
+    if row.lock_version != req.expected_lock_version:
+        raise ConcurrencyError(req.expected_lock_version, row.lock_version)
+    if req.action == "modify":
+        if req.factor is None or req.final_score is None:
+            raise ProposalError("modify requires factor and final_score")
+        current = {p.factor: p for p in self.repo.proposals_of(run_id)}[req.factor]
+        self.repo.record_decision(
+            run_id,
+            "modify",
+            req.factor,
+            current.proposed_score,
+            req.final_score,
+            req.reason,
+            req.actor,
+        )
+        self.repo.replace_proposal_score(
+            run_id, req.factor, req.final_score, req.reason
+        )
+        framework = load_framework(self.framework_dir / "common-stock.yaml")
+        snapshot = evaluate(
+            framework=framework,
+            scope=self.repo.scope_of(run_id),
+            evidence=self.repo.evidence_of(run_id),
+            proposals=self.repo.proposals_of(run_id),
+        )
+        self.repo.save_draft_snapshot(run_id, snapshot)
+    elif req.action == "accept":
+        self.repo.record_decision(
+            run_id, "accept", req.factor, None, None, req.reason, req.actor
+        )
+    elif req.action == "return":
+        self.repo.record_decision(
+            run_id, "return", None, None, None, req.reason, req.actor
+        )
+        self.repo.advance(run_id, RunState.NEEDS_REVIEW)
+    if req.action != "return":
+        self.repo.advance(run_id, RunState.DRAFT)  # bumps lock_version
 ```
 
 Note: `advance(DRAFT→DRAFT)` is illegal in the machine — add repository method `touch(run_id)` that only bumps `lock_version`/`updated_at` without a transition, and use it in review's non-return path. Add `touch` test to `test_repository.py`.
@@ -1087,15 +1233,16 @@ Note: `advance(DRAFT→DRAFT)` is illegal in the machine — add repository meth
 - Rules: state must be `draft` (replay of a consumed key short-circuits before the state check so double-approve returns 200 with the same version); records a `HumanDecision(action="approve")`; version row immutable; state → `approved`. 409 on lock mismatch or wrong state.
 
 ```python
-    def approve(self, run_id: str, expected_lock: int, idem_key: str, actor: str):
-        replay = self.repo.find_version_by_idem(idem_key)  # add small lookup method
-        if replay is not None:
-            return replay, False
-        self._require_state(run_id, RunState.DRAFT)
-        version, _ = self.repo.create_version(run_id, idem_key, expected_lock)
-        self.repo.record_decision(run_id, "approve", None, None, None,
-                                  f"approved by {actor}", actor)
-        return version, True
+def approve(self, run_id: str, expected_lock: int, idem_key: str, actor: str):
+    replay = self.repo.find_version_by_idem(idem_key)  # add small lookup method
+    if replay is not None:
+        return replay, False
+    self._require_state(run_id, RunState.DRAFT)
+    version, _ = self.repo.create_version(run_id, idem_key, expected_lock)
+    self.repo.record_decision(
+        run_id, "approve", None, None, None, f"approved by {actor}", actor
+    )
+    return version, True
 ```
 
 (Add `find_version_by_idem(idem_key) -> ResearchVersionRow | None` to repository + test.)
@@ -1119,26 +1266,42 @@ FIXTURE = ROOT / "examples" / "fixtures" / "adbe_2026-09-03"
 
 def test_adbe_fixture_create_to_approve(client):
     data = json.loads((FIXTURE / "input.json").read_text(encoding="utf-8"))
-    expected = json.loads((FIXTURE / "expected_snapshot.json").read_text(encoding="utf-8"))
+    expected = json.loads(
+        (FIXTURE / "expected_snapshot.json").read_text(encoding="utf-8")
+    )
 
-    r = client.post("/v1/research-runs", json={
-        **data["scope"]}, headers={"Idempotency-Key": "e2e-create"})
+    r = client.post(
+        "/v1/research-runs",
+        json={**data["scope"]},
+        headers={"Idempotency-Key": "e2e-create"},
+    )
     assert r.status_code == 201
     run_id = r.json()["id"]
 
-    assert client.post(f"/v1/research-runs/{run_id}/evidence",
-                       json={"evidence": data["evidence"]}).status_code == 200
-    assert client.post(f"/v1/research-runs/{run_id}/factor-proposals",
-                       json={"proposals": data["proposals"]}).status_code == 200
+    assert (
+        client.post(
+            f"/v1/research-runs/{run_id}/evidence", json={"evidence": data["evidence"]}
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"/v1/research-runs/{run_id}/factor-proposals",
+            json={"proposals": data["proposals"]},
+        ).status_code
+        == 200
+    )
 
     r = client.post(f"/v1/research-runs/{run_id}/compute")
     assert r.status_code == 200
     assert r.json() == expected  # same snapshot as offline core
 
     lock = client.get(f"/v1/research-runs/{run_id}").json()["lock_version"]
-    r = client.post(f"/v1/research-runs/{run_id}/approve",
-                    json={"expected_lock_version": lock},
-                    headers={"Idempotency-Key": "e2e-approve"})
+    r = client.post(
+        f"/v1/research-runs/{run_id}/approve",
+        json={"expected_lock_version": lock},
+        headers={"Idempotency-Key": "e2e-approve"},
+    )
     assert r.status_code == 201
 
     result = client.get(f"/v1/research-runs/{run_id}/result").json()
@@ -1146,9 +1309,11 @@ def test_adbe_fixture_create_to_approve(client):
     assert result["version"]["snapshot_json"] == expected
 
     # duplicate approve: same version, no new row
-    r2 = client.post(f"/v1/research-runs/{run_id}/approve",
-                     json={"expected_lock_version": lock},
-                     headers={"Idempotency-Key": "e2e-approve"})
+    r2 = client.post(
+        f"/v1/research-runs/{run_id}/approve",
+        json={"expected_lock_version": lock},
+        headers={"Idempotency-Key": "e2e-approve"},
+    )
     assert r2.status_code == 200 and r2.json()["id"] == r.json()["id"]
 ```
 

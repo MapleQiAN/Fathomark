@@ -3,7 +3,6 @@ from datetime import date
 
 import pytest
 from fathomark_core.schemas import ScopeSnapshot
-
 from fathomark_storage import create_session_factory, init_db
 from fathomark_storage.repository import RunRepository
 from fathomark_storage.state_machine import InvalidTransition, RunState

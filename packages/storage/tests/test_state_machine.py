@@ -1,6 +1,5 @@
 # packages/storage/tests/test_state_machine.py
 import pytest
-
 from fathomark_storage.state_machine import InvalidTransition, RunState, transition
 
 
