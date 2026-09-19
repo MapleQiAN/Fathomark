@@ -99,26 +99,39 @@ class Framework(BaseModel):
         for lens_name, weights in self.lenses.items():
             unknown = set(weights) - known
             if unknown:
-                errors.append(f"lens {lens_name} references unknown factors: {sorted(unknown)}")
+                errors.append(
+                    f"lens {lens_name} references unknown factors: {sorted(unknown)}"
+                )
             total = sum(weights.values())
             if abs(total - 1.0) > 1e-9:
-                errors.append(f"lens {lens_name} weights sum to {total}, must sum to 1.0")
+                errors.append(
+                    f"lens {lens_name} weights sum to {total}, must sum to 1.0"
+                )
             if set(weights) != known:
                 errors.append(f"lens {lens_name} must weight every factor")
-        for band_set, label in ((self.ratings, "rating"), (self.tactical_states, "tactical")):
+        for band_set, label in (
+            (self.ratings, "rating"),
+            (self.tactical_states, "tactical"),
+        ):
             covered = sorted((b.min, b.max_exclusive) for b in band_set)
             if (
                 covered[0][0] != 0
-                or any(covered[i][1] != covered[i + 1][0] for i in range(len(covered) - 1))
+                or any(
+                    covered[i][1] != covered[i + 1][0] for i in range(len(covered) - 1)
+                )
                 or covered[-1][1] < 100
             ):
-                errors.append(f"{label} bands must be contiguous from 0 and reach at least 100 with no gaps")
+                errors.append(
+                    f"{label} bands must be contiguous from 0 and reach at least 100 with no gaps"
+                )
         for rule in self.veto_rules:
             if rule.factor not in known:
                 errors.append(f"veto rule references unknown factor {rule.factor}")
             unknown_lenses = set(rule.applies_to) - set(self.lenses)
             if unknown_lenses:
-                errors.append(f"veto rule references unknown lenses: {sorted(unknown_lenses)}")
+                errors.append(
+                    f"veto rule references unknown lenses: {sorted(unknown_lenses)}"
+                )
         if errors:
             raise FrameworkValidationError("; ".join(errors))
         return self

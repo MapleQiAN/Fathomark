@@ -9,12 +9,12 @@ class LensResult(BaseModel):
     model_config = {"frozen": True}
 
     lens: str
-    total: float | None          # None only on NR (veto preserves the computed total)
-    rating: str                  # spectrum grade, or "X" / "NR"
+    total: float | None  # None only on NR (veto preserves the computed total)
+    rating: str  # spectrum grade, or "X" / "NR"
     tactical_state: str | None = None
     vetoed: bool = False
     veto_reasons: list[str] = []
-    flagged: bool = False        # policy_risk veto on tactical lens
+    flagged: bool = False  # policy_risk veto on tactical lens
 
 
 def weighted_total(framework: Framework, lens: str, scores: dict[str, float]) -> float:

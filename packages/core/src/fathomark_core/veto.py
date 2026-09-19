@@ -44,7 +44,9 @@ def evaluate_lens(
         lens=lens,
         total=total,
         rating="X" if vetoed else rating_for_total(framework, total),
-        tactical_state=tactical_state_for_total(framework, total) if lens == "tactical" and not vetoed else None,
+        tactical_state=tactical_state_for_total(framework, total)
+        if lens == "tactical" and not vetoed
+        else None,
         vetoed=vetoed,
         veto_reasons=veto_reasons,
         flagged=flagged and not vetoed,

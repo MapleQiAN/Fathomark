@@ -18,9 +18,13 @@ class SensitivityResult(BaseModel):
     classification: Literal["robust", "fragile", "invalid"]
 
 
-def two_stage_ev(fcff0: float, g: float, wacc: float, terminal_growth: float, years: int) -> float:
+def two_stage_ev(
+    fcff0: float, g: float, wacc: float, terminal_growth: float, years: int
+) -> float:
     pv = sum(fcff0 * (1 + g) ** t / (1 + wacc) ** t for t in range(1, years + 1))
-    terminal = fcff0 * (1 + g) ** years * (1 + terminal_growth) / (wacc - terminal_growth)
+    terminal = (
+        fcff0 * (1 + g) ** years * (1 + terminal_growth) / (wacc - terminal_growth)
+    )
     return pv + terminal / (1 + wacc) ** years
 
 
@@ -40,7 +44,10 @@ def solve_implied_growth(
         return None  # no root in interval — never extrapolate
     for _ in range(200):
         mid = (lo + hi) / 2
-        if two_stage_ev(fcff0, mid, wacc, terminal_growth, cfg.horizon_years) < ev_market:
+        if (
+            two_stage_ev(fcff0, mid, wacc, terminal_growth, cfg.horizon_years)
+            < ev_market
+        ):
             lo = mid
         else:
             hi = mid
@@ -74,8 +81,12 @@ def run_sensitivity(
     valid = len(solutions)
     if valid == 0:
         return SensitivityResult(
-            base_g=base_g, min_g=None, max_g=None, width=None,
-            valid_scenarios=0, classification="invalid",
+            base_g=base_g,
+            min_g=None,
+            max_g=None,
+            width=None,
+            valid_scenarios=0,
+            classification="invalid",
         )
     lo, hi = min(solutions), max(solutions)
     width = hi - lo
@@ -90,14 +101,23 @@ def run_sensitivity(
     else:
         classification = "fragile"
     return SensitivityResult(
-        base_g=base_g, min_g=lo, max_g=hi, width=width,
-        valid_scenarios=valid, classification=classification,
+        base_g=base_g,
+        min_g=lo,
+        max_g=hi,
+        width=width,
+        valid_scenarios=valid,
+        classification=classification,
     )
 
 
 def margin_convergence_ev(
-    revenue0: float, margin0: float, margin_t: float,
-    g: float, wacc: float, terminal_growth: float, years: int,
+    revenue0: float,
+    margin0: float,
+    margin_t: float,
+    g: float,
+    wacc: float,
+    terminal_growth: float,
+    years: int,
 ) -> float:
     pv = 0.0
     for t in range(1, years + 1):
@@ -110,13 +130,20 @@ def margin_convergence_ev(
 
 
 def solve_implied_growth_margin_model(
-    ev_market: float, revenue0: float, margin0: float, margin_t: float,
-    wacc: float, terminal_growth: float, cfg: ValuationConfig,
+    ev_market: float,
+    revenue0: float,
+    margin0: float,
+    margin_t: float,
+    wacc: float,
+    terminal_growth: float,
+    cfg: ValuationConfig,
 ) -> float | None:
     if wacc <= terminal_growth or revenue0 <= 0:
         return None
     lo, hi = cfg.root_interval
-    f = lambda g: margin_convergence_ev(revenue0, margin0, margin_t, g, wacc, terminal_growth, cfg.horizon_years)
+    f = lambda g: margin_convergence_ev(
+        revenue0, margin0, margin_t, g, wacc, terminal_growth, cfg.horizon_years
+    )
     if f(lo) > ev_market or f(hi) < ev_market:
         return None  # no root in interval — never extrapolate
     for _ in range(200):
@@ -145,13 +172,20 @@ def score_deviation(d: float, cfg: ValuationConfig) -> float:
     # 取7.5分" means *near* -0.10, not at it) and gives 9.5 at d == -0.20.
     for anchor in cfg.deviation["anchors"]:
         lo = anchor["min"] if anchor["min"] is not None else float("-inf")
-        hi = anchor["max_exclusive"] if anchor["max_exclusive"] is not None else float("inf")
+        hi = (
+            anchor["max_exclusive"]
+            if anchor["max_exclusive"] is not None
+            else float("inf")
+        )
         if lo <= d < hi:
             if anchor.get("score") is not None:
                 return anchor["score"]
             # linear interpolation band: score_low at hi edge, score_high at lo edge
             frac = (hi - d) / (hi - lo)
-            return _round_half(anchor["score_low"] + frac * (anchor["score_high"] - anchor["score_low"]))
+            return _round_half(
+                anchor["score_low"]
+                + frac * (anchor["score_high"] - anchor["score_low"])
+            )
     raise ValueError(f"deviation {d} outside anchor table")
 
 
@@ -188,10 +222,16 @@ class ValuationScore(BaseModel):
 
 def _backup(peg: float | None, cfg: ValuationConfig, reason: str) -> "ValuationScore":
     if peg is None:
-        raise ValueError(f"backup valuation path required ({reason}) but no backup_peg provided")
+        raise ValueError(
+            f"backup valuation path required ({reason}) but no backup_peg provided"
+        )
     return ValuationScore(
-        score=score_backup_peg(peg, cfg), method="backup_peg",
-        implied_growth=None, sensitivity=None, switched_to_backup=True, switch_reason=reason,
+        score=score_backup_peg(peg, cfg),
+        method="backup_peg",
+        implied_growth=None,
+        sensitivity=None,
+        switched_to_backup=True,
+        switch_reason=reason,
     )
 
 
@@ -216,7 +256,9 @@ def score_valuation(
             ev_market, revenue0, margin0, margin_t, wacc, terminal_growth, cfg
         )
         sensitivity = None  # margin-model sensitivity uses same grid; omitted in M1, noted in docs
-        method: Literal["reverse_dcf", "reverse_dcf_margin", "backup_peg"] = "reverse_dcf_margin"
+        method: Literal["reverse_dcf", "reverse_dcf_margin", "backup_peg"] = (
+            "reverse_dcf_margin"
+        )
     else:
         sensitivity = run_sensitivity(ev_market, fcff0, wacc, terminal_growth, cfg)
         base_g = sensitivity.base_g
@@ -228,15 +270,24 @@ def score_valuation(
         return _backup(backup_peg, cfg, "no root in solver interval")
 
     floor = cfg.deviation["denominator_floor"]
-    deviations = [deviation(g, g_expected, floor) for g in ([base_g] if sensitivity is None else
-                  [sensitivity.min_g, sensitivity.max_g])]
+    deviations = [
+        deviation(g, g_expected, floor)
+        for g in (
+            [base_g] if sensitivity is None else [sensitivity.min_g, sensitivity.max_g]
+        )
+    ]
     if any(d >= 0.10 for d in deviations) and any(d < -0.10 for d in deviations):
-        return _backup(backup_peg, cfg, "sensitivity deviation spans undervalued and overvalued")
+        return _backup(
+            backup_peg, cfg, "sensitivity deviation spans undervalued and overvalued"
+        )
 
     return ValuationScore(
         score=score_deviation(deviation(base_g, g_expected, floor), cfg),
-        method=method, implied_growth=base_g, sensitivity=sensitivity,
-        switched_to_backup=False, switch_reason=None,
+        method=method,
+        implied_growth=base_g,
+        sensitivity=sensitivity,
+        switched_to_backup=False,
+        switch_reason=None,
         confidence_downgrade=(
             method == "reverse_dcf"
             and sensitivity is not None

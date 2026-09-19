@@ -362,7 +362,9 @@ def test_load_bundled_framework():
 
 
 def test_lens_weights_must_sum_to_one(tmp_path):
-    bad = FRAMEWORK_PATH.read_text(encoding="utf-8").replace("business_moat: 0.22", "business_moat: 0.23", 1)
+    bad = FRAMEWORK_PATH.read_text(encoding="utf-8").replace(
+        "business_moat: 0.22", "business_moat: 0.23", 1
+    )
     p = tmp_path / "bad.yaml"
     p.write_text(bad, encoding="utf-8")
     with pytest.raises(FrameworkValidationError, match="sum"):
@@ -370,7 +372,9 @@ def test_lens_weights_must_sum_to_one(tmp_path):
 
 
 def test_lens_must_reference_known_factors(tmp_path):
-    text = FRAMEWORK_PATH.read_text(encoding="utf-8").replace("business_moat:", "unknown_factor:", 1)
+    text = FRAMEWORK_PATH.read_text(encoding="utf-8").replace(
+        "business_moat:", "unknown_factor:", 1
+    )
     p = tmp_path / "bad.yaml"
     p.write_text(text, encoding="utf-8")
     with pytest.raises(FrameworkValidationError):
@@ -379,7 +383,9 @@ def test_lens_must_reference_known_factors(tmp_path):
 
 def test_rating_bands_must_cover_0_to_100(tmp_path):
     text = FRAMEWORK_PATH.read_text(encoding="utf-8").replace(
-        "{grade: D,  min: 0,  max_exclusive: 60}", "{grade: D,  min: 0,  max_exclusive: 55}", 1
+        "{grade: D,  min: 0,  max_exclusive: 60}",
+        "{grade: D,  min: 0,  max_exclusive: 55}",
+        1,
     )
     p = tmp_path / "bad.yaml"
     p.write_text(text, encoding="utf-8")
@@ -389,7 +395,9 @@ def test_rating_bands_must_cover_0_to_100(tmp_path):
 
 def test_veto_rule_factor_must_exist(tmp_path):
     text = FRAMEWORK_PATH.read_text(encoding="utf-8").replace(
-        "  - factor: financial_health\n    below: 3.0", "  - factor: nope\n    below: 3.0", 1
+        "  - factor: financial_health\n    below: 3.0",
+        "  - factor: nope\n    below: 3.0",
+        1,
     )
     p = tmp_path / "bad.yaml"
     p.write_text(text, encoding="utf-8")
@@ -504,22 +512,33 @@ class Framework(BaseModel):
         for lens_name, weights in self.lenses.items():
             unknown = set(weights) - known
             if unknown:
-                errors.append(f"lens {lens_name} references unknown factors: {sorted(unknown)}")
+                errors.append(
+                    f"lens {lens_name} references unknown factors: {sorted(unknown)}"
+                )
             total = sum(weights.values())
             if abs(total - 1.0) > 1e-9:
-                errors.append(f"lens {lens_name} weights sum to {total}, must sum to 1.0")
+                errors.append(
+                    f"lens {lens_name} weights sum to {total}, must sum to 1.0"
+                )
             if set(weights) != known:
                 errors.append(f"lens {lens_name} must weight every factor")
-        for band_set, label in ((self.ratings, "rating"), (self.tactical_states, "tactical")):
+        for band_set, label in (
+            (self.ratings, "rating"),
+            (self.tactical_states, "tactical"),
+        ):
             covered = sorted((b.min, b.max_exclusive) for b in band_set)
-            if covered[0][0] != 0 or any(covered[i][1] != covered[i + 1][0] for i in range(len(covered) - 1)):
+            if covered[0][0] != 0 or any(
+                covered[i][1] != covered[i + 1][0] for i in range(len(covered) - 1)
+            ):
                 errors.append(f"{label} bands must be contiguous from 0 with no gaps")
         for rule in self.veto_rules:
             if rule.factor not in known:
                 errors.append(f"veto rule references unknown factor {rule.factor}")
             unknown_lenses = set(rule.applies_to) - set(self.lenses)
             if unknown_lenses:
-                errors.append(f"veto rule references unknown lenses: {sorted(unknown_lenses)}")
+                errors.append(
+                    f"veto rule references unknown lenses: {sorted(unknown_lenses)}"
+                )
         if errors:
             raise FrameworkValidationError("; ".join(errors))
         return self
@@ -584,11 +603,15 @@ from fathomark_core.schemas import (
     validate_proposal,
 )
 
-FRAMEWORK = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml")
+FRAMEWORK = load_framework(
+    Path(__file__).parents[3] / "frameworks" / "common-stock.yaml"
+)
 CUTOFF = date(2026, 9, 18)
 
 
-def _evidence(ev_id: str = "ev_001", published: date = date(2026, 9, 1)) -> EvidenceItem:
+def _evidence(
+    ev_id: str = "ev_001", published: date = date(2026, 9, 1)
+) -> EvidenceItem:
     return EvidenceItem(
         id=ev_id,
         source_name="SEC 10-Q",
@@ -619,8 +642,12 @@ def _proposal(**kw) -> FactorProposal:
 
 def test_scope_snapshot_and_evidence_round_trip():
     scope = ScopeSnapshot(
-        symbol="ADBE", exchange="NASDAQ", research_role="core", horizon="5-10y",
-        research_date=date(2026, 9, 18), data_cutoff=date(2026, 9, 18),
+        symbol="ADBE",
+        exchange="NASDAQ",
+        research_role="core",
+        horizon="5-10y",
+        research_date=date(2026, 9, 18),
+        data_cutoff=date(2026, 9, 18),
         framework_ref="common-stock@1.0.0",
     )
     assert scope.framework_ref == "common-stock@1.0.0"
@@ -629,43 +656,69 @@ def test_scope_snapshot_and_evidence_round_trip():
 
 
 def test_valid_proposal_passes():
-    validate_proposal(_proposal(), framework=FRAMEWORK, evidence_ids={"ev_001"}, data_cutoff=CUTOFF)
+    validate_proposal(
+        _proposal(), framework=FRAMEWORK, evidence_ids={"ev_001"}, data_cutoff=CUTOFF
+    )
 
 
 def test_score_must_be_on_half_step():
     with pytest.raises(ProposalError, match="step"):
-        validate_proposal(_proposal(proposed_score=7.3), framework=FRAMEWORK,
-                          evidence_ids={"ev_001"}, data_cutoff=CUTOFF)
+        validate_proposal(
+            _proposal(proposed_score=7.3),
+            framework=FRAMEWORK,
+            evidence_ids={"ev_001"},
+            data_cutoff=CUTOFF,
+        )
 
 
 def test_unknown_evidence_rejected():
     with pytest.raises(ProposalError, match="ev_999"):
-        validate_proposal(_proposal(evidence_ids=["ev_999"]), framework=FRAMEWORK,
-                          evidence_ids={"ev_001"}, data_cutoff=CUTOFF)
+        validate_proposal(
+            _proposal(evidence_ids=["ev_999"]),
+            framework=FRAMEWORK,
+            evidence_ids={"ev_001"},
+            data_cutoff=CUTOFF,
+        )
 
 
 def test_unknown_factor_rejected():
     with pytest.raises(ProposalError):
-        validate_proposal(_proposal(factor="vibes"), framework=FRAMEWORK,
-                          evidence_ids={"ev_001"}, data_cutoff=CUTOFF)
+        validate_proposal(
+            _proposal(factor="vibes"),
+            framework=FRAMEWORK,
+            evidence_ids={"ev_001"},
+            data_cutoff=CUTOFF,
+        )
 
 
 def test_proposal_after_cutoff_rejected():
     with pytest.raises(ProposalError, match="cutoff"):
-        validate_proposal(_proposal(as_of_date=date(2026, 9, 19)), framework=FRAMEWORK,
-                          evidence_ids={"ev_001"}, data_cutoff=CUTOFF)
+        validate_proposal(
+            _proposal(as_of_date=date(2026, 9, 19)),
+            framework=FRAMEWORK,
+            evidence_ids={"ev_001"},
+            data_cutoff=CUTOFF,
+        )
 
 
 def test_empty_rationale_rejected():
     with pytest.raises(ProposalError):
-        validate_proposal(_proposal(rationale="  "), framework=FRAMEWORK,
-                          evidence_ids={"ev_001"}, data_cutoff=CUTOFF)
+        validate_proposal(
+            _proposal(rationale="  "),
+            framework=FRAMEWORK,
+            evidence_ids={"ev_001"},
+            data_cutoff=CUTOFF,
+        )
 
 
 def test_evidence_after_cutoff_rejected():
     with pytest.raises(ProposalError, match="cutoff"):
-        validate_proposal(_proposal(), framework=FRAMEWORK,
-                          evidence_ids={"ev_001"}, data_cutoff=date(2026, 8, 31))
+        validate_proposal(
+            _proposal(),
+            framework=FRAMEWORK,
+            evidence_ids={"ev_001"},
+            data_cutoff=date(2026, 8, 31),
+        )
 ```
 
 Note: the last test passes an evidence set whose item was published after the cutoff — the validator receives `evidence_dates: dict[str, date]` rather than bare ids so it can check this. Adjust signature: `validate_proposal(p, *, framework, evidence: dict[str, date], data_cutoff)`. Update the earlier tests to pass `evidence={"ev_001": date(2026, 9, 1)}`.
@@ -752,19 +805,25 @@ def validate_proposal(
         raise ProposalError(f"unknown factor: {proposal.factor}")
     steps = round((proposal.proposed_score - scale.min) / scale.step)
     snapped = scale.min + steps * scale.step
-    if abs(proposal.proposed_score - snapped) > 1e-9 or not (scale.min <= proposal.proposed_score <= scale.max):
+    if abs(proposal.proposed_score - snapped) > 1e-9 or not (
+        scale.min <= proposal.proposed_score <= scale.max
+    ):
         raise ProposalError(
             f"score {proposal.proposed_score} violates scale [{scale.min}, {scale.max}] step {scale.step}"
         )
     if not proposal.rationale.strip():
         raise ProposalError("rationale must not be empty")
     if proposal.as_of_date > data_cutoff:
-        raise ProposalError(f"proposal as_of_date {proposal.as_of_date} beyond cutoff {data_cutoff}")
+        raise ProposalError(
+            f"proposal as_of_date {proposal.as_of_date} beyond cutoff {data_cutoff}"
+        )
     for ev_id in proposal.evidence_ids + proposal.counter_evidence_ids:
         if ev_id not in evidence:
             raise ProposalError(f"unknown evidence id: {ev_id}")
         if evidence[ev_id] > data_cutoff:
-            raise ProposalError(f"evidence {ev_id} published after cutoff {data_cutoff}")
+            raise ProposalError(
+                f"evidence {ev_id} published after cutoff {data_cutoff}"
+            )
 ```
 
 - [ ] **Step 3: Run tests, verify pass**
@@ -804,16 +863,29 @@ from pathlib import Path
 import pytest
 
 from fathomark_core.framework import load_framework
-from fathomark_core.scoring import rating_for_total, tactical_state_for_total, weighted_total
+from fathomark_core.scoring import (
+    rating_for_total,
+    tactical_state_for_total,
+    weighted_total,
+)
 
-FRAMEWORK = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml")
+FRAMEWORK = load_framework(
+    Path(__file__).parents[3] / "frameworks" / "common-stock.yaml"
+)
 
 # ADBE 长期核心仓研究 2026-09-03: core lens total 85.75 -> A+
 ADBE_SCORES = {
-    "business_moat": 9.0, "financial_health": 9.5, "governance": 7.5,
-    "policy_risk": 6.5, "growth_sustainability": 7.5, "valuation": 10.0,
-    "earnings_quality": 10.0, "trend_momentum": 7.0, "liquidity": 10.0,
-    "volatility_downside": 4.0, "catalyst_window": 0.0,
+    "business_moat": 9.0,
+    "financial_health": 9.5,
+    "governance": 7.5,
+    "policy_risk": 6.5,
+    "growth_sustainability": 7.5,
+    "valuation": 10.0,
+    "earnings_quality": 10.0,
+    "trend_momentum": 7.0,
+    "liquidity": 10.0,
+    "volatility_downside": 4.0,
+    "catalyst_window": 0.0,
 }
 
 
@@ -823,20 +895,41 @@ def test_adbe_core_total_reproduces_report():
 
 def test_missing_factor_rejected():
     with pytest.raises(KeyError):
-        weighted_total(FRAMEWORK, "core", {k: v for k, v in ADBE_SCORES.items() if k != "valuation"})
+        weighted_total(
+            FRAMEWORK,
+            "core",
+            {k: v for k, v in ADBE_SCORES.items() if k != "valuation"},
+        )
 
 
 @pytest.mark.parametrize(
     "total,grade",
-    [(100.0, "S"), (90.0, "S"), (89.99, "A+"), (85.0, "A+"), (84.5, "A"),
-     (80.0, "A"), (79.5, "B+"), (75.0, "B+"), (74.5, "B"), (70.0, "B"),
-     (69.5, "B-"), (65.0, "B-"), (64.5, "C"), (60.0, "C"), (59.5, "D"), (0.0, "D")],
+    [
+        (100.0, "S"),
+        (90.0, "S"),
+        (89.99, "A+"),
+        (85.0, "A+"),
+        (84.5, "A"),
+        (80.0, "A"),
+        (79.5, "B+"),
+        (75.0, "B+"),
+        (74.5, "B"),
+        (70.0, "B"),
+        (69.5, "B-"),
+        (65.0, "B-"),
+        (64.5, "C"),
+        (60.0, "C"),
+        (59.5, "D"),
+        (0.0, "D"),
+    ],
 )
 def test_rating_spectrum_boundaries(total, grade):
     assert rating_for_total(FRAMEWORK, total) == grade
 
 
-@pytest.mark.parametrize("total,state", [(80.0, "T1"), (79.5, "T2"), (65.0, "T2"), (64.5, "T3"), (0.0, "T3")])
+@pytest.mark.parametrize(
+    "total,state", [(80.0, "T1"), (79.5, "T2"), (65.0, "T2"), (64.5, "T3"), (0.0, "T3")]
+)
 def test_tactical_state_boundaries(total, state):
     assert tactical_state_for_total(FRAMEWORK, total) == state
 ```
@@ -857,12 +950,12 @@ class LensResult(BaseModel):
     model_config = {"frozen": True}
 
     lens: str
-    total: float | None          # None when vetoed/NR — never fabricate a number
-    rating: str                  # spectrum grade, or "X" / "NR"
+    total: float | None  # None when vetoed/NR — never fabricate a number
+    rating: str  # spectrum grade, or "X" / "NR"
     tactical_state: str | None = None
     vetoed: bool = False
     veto_reasons: list[str] = []
-    flagged: bool = False        # policy_risk veto on tactical lens
+    flagged: bool = False  # policy_risk veto on tactical lens
 
 
 def weighted_total(framework: Framework, lens: str, scores: dict[str, float]) -> float:
@@ -923,7 +1016,9 @@ from pathlib import Path
 from fathomark_core.framework import load_framework
 from fathomark_core.veto import evaluate_lens, overall_confidence
 
-FRAMEWORK = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml")
+FRAMEWORK = load_framework(
+    Path(__file__).parents[3] / "frameworks" / "common-stock.yaml"
+)
 
 HIGH = {f.id: 9.0 for f in FRAMEWORK.raw_factors}
 
@@ -941,18 +1036,24 @@ def test_financial_health_veto_beats_high_total():
 
 
 def test_governance_veto_applies_to_tactical():
-    r = evaluate_lens(FRAMEWORK, "tactical", HIGH | {"governance": 2.0}, confidence="high")
+    r = evaluate_lens(
+        FRAMEWORK, "tactical", HIGH | {"governance": 2.0}, confidence="high"
+    )
     assert r.vetoed and r.rating == "X"
 
 
 def test_policy_risk_flags_but_does_not_veto_tactical():
-    r = evaluate_lens(FRAMEWORK, "tactical", HIGH | {"policy_risk": 1.0}, confidence="high")
+    r = evaluate_lens(
+        FRAMEWORK, "tactical", HIGH | {"policy_risk": 1.0}, confidence="high"
+    )
     assert not r.vetoed and r.flagged and r.rating == "S"
 
 
 def test_policy_risk_vetoes_core_and_offensive():
     for lens in ("core", "offensive"):
-        r = evaluate_lens(FRAMEWORK, lens, HIGH | {"policy_risk": 2.5}, confidence="high")
+        r = evaluate_lens(
+            FRAMEWORK, lens, HIGH | {"policy_risk": 2.5}, confidence="high"
+        )
         assert r.vetoed and r.rating == "X"
 
 
@@ -1025,7 +1126,9 @@ def evaluate_lens(
         lens=lens,
         total=total,
         rating="X" if vetoed else rating_for_total(framework, total),
-        tactical_state=tactical_state_for_total(framework, total) if lens == "tactical" and not vetoed else None,
+        tactical_state=tactical_state_for_total(framework, total)
+        if lens == "tactical" and not vetoed
+        else None,
         vetoed=vetoed,
         veto_reasons=veto_reasons,
         flagged=flagged and not vetoed,
@@ -1071,28 +1174,48 @@ import pytest
 from fathomark_core import evaluate, load_framework
 from fathomark_core.schemas import EvidenceItem, FactorProposal, ScopeSnapshot
 
-FRAMEWORK = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml")
+FRAMEWORK = load_framework(
+    Path(__file__).parents[3] / "frameworks" / "common-stock.yaml"
+)
 DAY = date(2026, 9, 18)
 
 SCOPE = ScopeSnapshot(
-    symbol="ADBE", exchange="NASDAQ", research_role="core", horizon="5-10y",
-    research_date=DAY, data_cutoff=DAY, framework_ref="common-stock@1.0.0",
+    symbol="ADBE",
+    exchange="NASDAQ",
+    research_role="core",
+    horizon="5-10y",
+    research_date=DAY,
+    data_cutoff=DAY,
+    framework_ref="common-stock@1.0.0",
 )
 
 ADBE = {
-    "business_moat": 9.0, "financial_health": 9.5, "governance": 7.5,
-    "policy_risk": 6.5, "growth_sustainability": 7.5, "valuation": 10.0,
-    "earnings_quality": 10.0, "trend_momentum": 7.0, "liquidity": 10.0,
-    "volatility_downside": 4.0, "catalyst_window": 0.0,
+    "business_moat": 9.0,
+    "financial_health": 9.5,
+    "governance": 7.5,
+    "policy_risk": 6.5,
+    "growth_sustainability": 7.5,
+    "valuation": 10.0,
+    "earnings_quality": 10.0,
+    "trend_momentum": 7.0,
+    "liquidity": 10.0,
+    "volatility_downside": 4.0,
+    "catalyst_window": 0.0,
 }
 
 
 def _evidence() -> list[EvidenceItem]:
     return [
         EvidenceItem(
-            id=f"ev_{i:03d}", source_name="fixture", source_class="filings",
-            url=None, published_date=date(2026, 9, 1), data_period_end=None,
-            accessed_at=datetime(2026, 9, 18), grade="A", content_hash=f"sha256:{i}",
+            id=f"ev_{i:03d}",
+            source_name="fixture",
+            source_class="filings",
+            url=None,
+            published_date=date(2026, 9, 1),
+            data_period_end=None,
+            accessed_at=datetime(2026, 9, 18),
+            grade="A",
+            content_hash=f"sha256:{i}",
         )
         for i in range(1, 12)
     ]
@@ -1102,16 +1225,23 @@ def _proposals(scores=None) -> list[FactorProposal]:
     scores = scores or ADBE
     return [
         FactorProposal(
-            factor=factor, proposed_score=score, rationale=f"依据 {factor}",
-            evidence_ids=[f"ev_{i:03d}"], counter_evidence_ids=[],
-            confidence="high", missing_data=[], as_of_date=DAY,
+            factor=factor,
+            proposed_score=score,
+            rationale=f"依据 {factor}",
+            evidence_ids=[f"ev_{i:03d}"],
+            counter_evidence_ids=[],
+            confidence="high",
+            missing_data=[],
+            as_of_date=DAY,
         )
         for i, (factor, score) in enumerate(scores.items(), start=1)
     ]
 
 
 def test_evaluate_adbe_reproduces_report():
-    snap = evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals())
+    snap = evaluate(
+        framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals()
+    )
     assert snap.lens_results["core"].total == 85.75
     assert snap.lens_results["core"].rating == "A+"
     assert snap.overall_confidence == "high"
@@ -1126,20 +1256,36 @@ def test_duplicate_factor_proposal_rejected():
 
 def test_missing_factor_proposal_rejected():
     with pytest.raises(ValueError, match="missing"):
-        evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals()[:-1])
+        evaluate(
+            framework=FRAMEWORK,
+            scope=SCOPE,
+            evidence=_evidence(),
+            proposals=_proposals()[:-1],
+        )
 
 
 def test_identical_inputs_identical_hash():
-    a = evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals())
-    b = evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals())
+    a = evaluate(
+        framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals()
+    )
+    b = evaluate(
+        framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals()
+    )
     assert a.content_hash == b.content_hash
     assert a == b
 
 
 def test_different_inputs_different_hash():
-    a = evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals())
+    a = evaluate(
+        framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals()
+    )
     changed = ADBE | {"valuation": 9.5}
-    b = evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=_evidence(), proposals=_proposals(changed))
+    b = evaluate(
+        framework=FRAMEWORK,
+        scope=SCOPE,
+        evidence=_evidence(),
+        proposals=_proposals(changed),
+    )
     assert a.content_hash != b.content_hash
 ```
 
@@ -1154,36 +1300,59 @@ from hypothesis import strategies as st
 from fathomark_core import evaluate, load_framework
 from fathomark_core.schemas import EvidenceItem, FactorProposal, ScopeSnapshot
 
-FRAMEWORK = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml")
+FRAMEWORK = load_framework(
+    Path(__file__).parents[3] / "frameworks" / "common-stock.yaml"
+)
 DAY = date(2026, 9, 18)
 SCOPE = ScopeSnapshot(
-    symbol="T", exchange="NYSE", research_role="core", horizon="1y",
-    research_date=DAY, data_cutoff=DAY, framework_ref="common-stock@1.0.0",
+    symbol="T",
+    exchange="NYSE",
+    research_role="core",
+    horizon="1y",
+    research_date=DAY,
+    data_cutoff=DAY,
+    framework_ref="common-stock@1.0.0",
 )
 
 score_dicts = st.fixed_dictionaries(
-    {f.id: st.floats(min_value=0, max_value=10).map(lambda x: round(x * 2) / 2)
-     for f in FRAMEWORK.raw_factors}
+    {
+        f.id: st.floats(min_value=0, max_value=10).map(lambda x: round(x * 2) / 2)
+        for f in FRAMEWORK.raw_factors
+    }
 )
 
 
 def _run(scores):
     evidence = [
         EvidenceItem(
-            id=f"ev_{i:03d}", source_name="fixture", source_class="filings",
-            url=None, published_date=DAY, data_period_end=None,
-            accessed_at=datetime(2026, 9, 18), grade="A", content_hash=str(i),
+            id=f"ev_{i:03d}",
+            source_name="fixture",
+            source_class="filings",
+            url=None,
+            published_date=DAY,
+            data_period_end=None,
+            accessed_at=datetime(2026, 9, 18),
+            grade="A",
+            content_hash=str(i),
         )
         for i in range(1, 12)
     ]
     proposals = [
         FactorProposal(
-            factor=f, proposed_score=s, rationale="r", evidence_ids=[f"ev_{i:03d}"],
-            counter_evidence_ids=[], confidence="high", missing_data=[], as_of_date=DAY,
+            factor=f,
+            proposed_score=s,
+            rationale="r",
+            evidence_ids=[f"ev_{i:03d}"],
+            counter_evidence_ids=[],
+            confidence="high",
+            missing_data=[],
+            as_of_date=DAY,
         )
         for i, (f, s) in enumerate(scores.items(), start=1)
     ]
-    return evaluate(framework=FRAMEWORK, scope=SCOPE, evidence=evidence, proposals=proposals)
+    return evaluate(
+        framework=FRAMEWORK, scope=SCOPE, evidence=evidence, proposals=proposals
+    )
 
 
 @given(scores=score_dicts)
@@ -1252,14 +1421,21 @@ def evaluate(
     proposals: list[FactorProposal],
 ) -> ScoreSnapshot:
     if scope.framework_ref != framework.framework_ref:
-        raise ValueError(f"scope framework {scope.framework_ref} != loaded {framework.framework_ref}")
+        raise ValueError(
+            f"scope framework {scope.framework_ref} != loaded {framework.framework_ref}"
+        )
     evidence_index = {ev.id: ev.published_date for ev in evidence}
     seen: set[str] = set()
     for p in proposals:
         if p.factor in seen:
             raise ValueError(f"duplicate proposal for factor {p.factor}")
         seen.add(p.factor)
-        validate_proposal(p, framework=framework, evidence=evidence_index, data_cutoff=scope.data_cutoff)
+        validate_proposal(
+            p,
+            framework=framework,
+            evidence=evidence_index,
+            data_cutoff=scope.data_cutoff,
+        )
     missing = set(framework.factors) - seen
     if missing:
         raise ValueError(f"missing proposals for factors: {sorted(missing)}")
@@ -1351,7 +1527,9 @@ from fathomark_core.valuation import (
     two_stage_ev,
 )
 
-CFG = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml").valuation
+CFG = load_framework(
+    Path(__file__).parents[3] / "frameworks" / "common-stock.yaml"
+).valuation
 
 
 def test_two_stage_ev_terminal_value():
@@ -1362,17 +1540,26 @@ def test_two_stage_ev_terminal_value():
 
 
 def test_adbe_implied_growth_approx_minus_5pct():
-    g = solve_implied_growth(ev_market=111.5e9, fcff0=10.28e9, wacc=0.096, terminal_growth=0.03, cfg=CFG)
+    g = solve_implied_growth(
+        ev_market=111.5e9, fcff0=10.28e9, wacc=0.096, terminal_growth=0.03, cfg=CFG
+    )
     assert g == pytest.approx(-0.05, abs=0.01)
 
 
 def test_solver_returns_none_when_no_root():
     # EV far above anything reachable in [-20%, 100%] growth
-    assert solve_implied_growth(ev_market=1e15, fcff0=1.0, wacc=0.10, terminal_growth=0.03, cfg=CFG) is None
+    assert (
+        solve_implied_growth(
+            ev_market=1e15, fcff0=1.0, wacc=0.10, terminal_growth=0.03, cfg=CFG
+        )
+        is None
+    )
 
 
 def test_sensitivity_adbe_is_classified():
-    r = run_sensitivity(ev_market=111.5e9, fcff0=10.28e9, wacc=0.096, terminal_growth=0.03, cfg=CFG)
+    r = run_sensitivity(
+        ev_market=111.5e9, fcff0=10.28e9, wacc=0.096, terminal_growth=0.03, cfg=CFG
+    )
     assert r.valid_scenarios == 9
     assert r.classification in {"robust", "fragile"}
     assert r.min_g <= r.base_g <= r.max_g
@@ -1381,7 +1568,9 @@ def test_sensitivity_adbe_is_classified():
 
 def test_sensitivity_invalid_when_too_few_valid_scenarios():
     # wacc - 1pp == g_T + 0.5pp violates wacc > g_T in some cells only with crafted numbers
-    r = run_sensitivity(ev_market=100.0, fcff0=10.0, wacc=0.04, terminal_growth=0.03, cfg=CFG)
+    r = run_sensitivity(
+        ev_market=100.0, fcff0=10.0, wacc=0.04, terminal_growth=0.03, cfg=CFG
+    )
     assert r.classification == "invalid"
     assert r.valid_scenarios < CFG.sensitivity.min_valid_scenarios
 ```
@@ -1411,9 +1600,13 @@ class SensitivityResult(BaseModel):
     classification: Literal["robust", "fragile", "invalid"]
 
 
-def two_stage_ev(fcff0: float, g: float, wacc: float, terminal_growth: float, years: int) -> float:
+def two_stage_ev(
+    fcff0: float, g: float, wacc: float, terminal_growth: float, years: int
+) -> float:
     pv = sum(fcff0 * (1 + g) ** t / (1 + wacc) ** t for t in range(1, years + 1))
-    terminal = fcff0 * (1 + g) ** years * (1 + terminal_growth) / (wacc - terminal_growth)
+    terminal = (
+        fcff0 * (1 + g) ** years * (1 + terminal_growth) / (wacc - terminal_growth)
+    )
     return pv + terminal / (1 + wacc) ** years
 
 
@@ -1433,7 +1626,10 @@ def solve_implied_growth(
         return None  # no root in interval — never extrapolate
     for _ in range(200):
         mid = (lo + hi) / 2
-        if two_stage_ev(fcff0, mid, wacc, terminal_growth, cfg.horizon_years) < ev_market:
+        if (
+            two_stage_ev(fcff0, mid, wacc, terminal_growth, cfg.horizon_years)
+            < ev_market
+        ):
             lo = mid
         else:
             hi = mid
@@ -1467,8 +1663,12 @@ def run_sensitivity(
     valid = len(solutions)
     if valid == 0:
         return SensitivityResult(
-            base_g=base_g, min_g=None, max_g=None, width=None,
-            valid_scenarios=0, classification="invalid",
+            base_g=base_g,
+            min_g=None,
+            max_g=None,
+            width=None,
+            valid_scenarios=0,
+            classification="invalid",
         )
     lo, hi = min(solutions), max(solutions)
     width = hi - lo
@@ -1483,8 +1683,12 @@ def run_sensitivity(
     else:
         classification = "fragile"
     return SensitivityResult(
-        base_g=base_g, min_g=lo, max_g=hi, width=width,
-        valid_scenarios=valid, classification=classification,
+        base_g=base_g,
+        min_g=lo,
+        max_g=hi,
+        width=width,
+        valid_scenarios=valid,
+        classification=classification,
     )
 ```
 
@@ -1537,13 +1741,24 @@ from fathomark_core.valuation import (
     solve_implied_growth_margin_model,
 )
 
-CFG = load_framework(Path(__file__).parents[3] / "frameworks" / "common-stock.yaml").valuation
+CFG = load_framework(
+    Path(__file__).parents[3] / "frameworks" / "common-stock.yaml"
+).valuation
 
 
 @pytest.mark.parametrize(
     "d,expected",
-    [(0.35, 0.0), (0.30, 0.0), (0.29, 4.0), (0.10, 4.0), (0.09, 7.0),
-     (-0.10, 7.5), (-0.15, 8.5), (-0.20, 9.5), (-0.21, 10.0)],
+    [
+        (0.35, 0.0),
+        (0.30, 0.0),
+        (0.29, 4.0),
+        (0.10, 4.0),
+        (0.09, 7.0),
+        (-0.10, 7.5),
+        (-0.15, 8.5),
+        (-0.20, 9.5),
+        (-0.21, 10.0),
+    ],
 )
 def test_deviation_anchor_bands(d, expected):
     assert score_deviation(d, CFG) == expected
@@ -1554,15 +1769,30 @@ def test_deviation_denominator_floor():
     assert deviation(0.01, 0.001, 0.05) == pytest.approx((0.01 - 0.001) / 0.05)
 
 
-@pytest.mark.parametrize("peg,expected", [(3.5, 0.0), (3.0, 4.0), (2.5, 4.0), (2.0, 4.0), (1.5, 7.0), (1.0, 7.0), (0.9, 10.0)])
+@pytest.mark.parametrize(
+    "peg,expected",
+    [
+        (3.5, 0.0),
+        (3.0, 4.0),
+        (2.5, 4.0),
+        (2.0, 4.0),
+        (1.5, 7.0),
+        (1.0, 7.0),
+        (0.9, 10.0),
+    ],
+)
 def test_backup_peg_bands(peg, expected):
     assert score_backup_peg(peg, CFG) == expected
 
 
 def test_adbe_scores_10():
     v = score_valuation(
-        cfg=CFG, ev_market=111.5e9, fcff0=10.28e9, wacc=0.096,
-        terminal_growth=0.03, g_expected=0.08,
+        cfg=CFG,
+        ev_market=111.5e9,
+        fcff0=10.28e9,
+        wacc=0.096,
+        terminal_growth=0.03,
+        g_expected=0.08,
     )
     assert v.method == "reverse_dcf"
     assert not v.switched_to_backup
@@ -1572,23 +1802,39 @@ def test_adbe_scores_10():
 
 def test_no_root_switches_to_backup():
     v = score_valuation(
-        cfg=CFG, ev_market=1e15, fcff0=1.0, wacc=0.10,
-        terminal_growth=0.03, g_expected=0.10, backup_peg=1.5,
+        cfg=CFG,
+        ev_market=1e15,
+        fcff0=1.0,
+        wacc=0.10,
+        terminal_growth=0.03,
+        g_expected=0.10,
+        backup_peg=1.5,
     )
     assert v.switched_to_backup and v.method == "backup_peg" and v.score == 7.0
 
 
 def test_no_backup_peg_when_required_raises():
     with pytest.raises(ValueError, match="backup"):
-        score_valuation(cfg=CFG, ev_market=1e15, fcff0=1.0, wacc=0.10,
-                        terminal_growth=0.03, g_expected=0.10)
+        score_valuation(
+            cfg=CFG,
+            ev_market=1e15,
+            fcff0=1.0,
+            wacc=0.10,
+            terminal_growth=0.03,
+            g_expected=0.10,
+        )
 
 
 def test_margin_model_solves_positive_growth():
     # company with negative current margin converging to 25%
     g = solve_implied_growth_margin_model(
-        ev_market=50e9, revenue0=5e9, margin0=-0.10, margin_t=0.25,
-        wacc=0.11, terminal_growth=0.03, cfg=CFG,
+        ev_market=50e9,
+        revenue0=5e9,
+        margin0=-0.10,
+        margin_t=0.25,
+        wacc=0.11,
+        terminal_growth=0.03,
+        cfg=CFG,
     )
     assert g is not None and -0.20 <= g <= 1.00
 
@@ -1596,8 +1842,12 @@ def test_margin_model_solves_positive_growth():
 def test_cross_side_deviation_forces_invalid_and_backup():
     # craft: valid base but sensitivity implies deviation on both sides of ±10%
     v = score_valuation(
-        cfg=CFG, ev_market=111.5e9, fcff0=10.28e9, wacc=0.096,
-        terminal_growth=0.03, g_expected=0.0,  # floor 0.05 makes deviation huge
+        cfg=CFG,
+        ev_market=111.5e9,
+        fcff0=10.28e9,
+        wacc=0.096,
+        terminal_growth=0.03,
+        g_expected=0.0,  # floor 0.05 makes deviation huge
         backup_peg=2.5,
     )
     assert v.switched_to_backup and v.score == 4.0
@@ -1611,8 +1861,13 @@ Append to `packages/core/src/fathomark_core/valuation.py`:
 
 ```python
 def margin_convergence_ev(
-    revenue0: float, margin0: float, margin_t: float,
-    g: float, wacc: float, terminal_growth: float, years: int,
+    revenue0: float,
+    margin0: float,
+    margin_t: float,
+    g: float,
+    wacc: float,
+    terminal_growth: float,
+    years: int,
 ) -> float:
     pv = 0.0
     for t in range(1, years + 1):
@@ -1625,13 +1880,20 @@ def margin_convergence_ev(
 
 
 def solve_implied_growth_margin_model(
-    ev_market: float, revenue0: float, margin0: float, margin_t: float,
-    wacc: float, terminal_growth: float, cfg: ValuationConfig,
+    ev_market: float,
+    revenue0: float,
+    margin0: float,
+    margin_t: float,
+    wacc: float,
+    terminal_growth: float,
+    cfg: ValuationConfig,
 ) -> float | None:
     if wacc <= terminal_growth or revenue0 <= 0:
         return None
     lo, hi = cfg.root_interval
-    f = lambda g: margin_convergence_ev(revenue0, margin0, margin_t, g, wacc, terminal_growth, cfg.horizon_years)
+    f = lambda g: margin_convergence_ev(
+        revenue0, margin0, margin_t, g, wacc, terminal_growth, cfg.horizon_years
+    )
     if f(lo) > ev_market or f(hi) < ev_market:
         return None
     for _ in range(200):
@@ -1656,13 +1918,20 @@ def _round_half(x: float) -> float:
 def score_deviation(d: float, cfg: ValuationConfig) -> float:
     for anchor in cfg.deviation["anchors"]:
         lo = anchor["min"] if anchor["min"] is not None else float("-inf")
-        hi = anchor["max_exclusive"] if anchor["max_exclusive"] is not None else float("inf")
+        hi = (
+            anchor["max_exclusive"]
+            if anchor["max_exclusive"] is not None
+            else float("inf")
+        )
         if lo <= d < hi:
             if anchor.get("score") is not None:
                 return anchor["score"]
             # linear interpolation band: score_low at hi edge, score_high at lo edge
             frac = (hi - d) / (hi - lo)
-            return _round_half(anchor["score_low"] + frac * (anchor["score_high"] - anchor["score_low"]))
+            return _round_half(
+                anchor["score_low"]
+                + frac * (anchor["score_high"] - anchor["score_low"])
+            )
     raise ValueError(f"deviation {d} outside anchor table")
 
 
@@ -1671,7 +1940,11 @@ def score_backup_peg(peg: float, cfg: ValuationConfig) -> float:
         raise ValueError("PEG must be positive; use industry adapter methods otherwise")
     for anchor in cfg.backup_peg_anchors:
         lo = anchor["min"] if anchor["min"] is not None else float("-inf")
-        hi = anchor["max_exclusive"] if anchor["max_exclusive"] is not None else float("inf")
+        hi = (
+            anchor["max_exclusive"]
+            if anchor["max_exclusive"] is not None
+            else float("inf")
+        )
         if lo <= peg < hi:
             return anchor["score"]
     raise ValueError(f"peg {peg} outside anchor table")
@@ -1690,10 +1963,16 @@ class ValuationScore(BaseModel):
 
 def _backup(peg: float | None, cfg: ValuationConfig, reason: str) -> "ValuationScore":
     if peg is None:
-        raise ValueError(f"backup valuation path required ({reason}) but no backup_peg provided")
+        raise ValueError(
+            f"backup valuation path required ({reason}) but no backup_peg provided"
+        )
     return ValuationScore(
-        score=score_backup_peg(peg, cfg), method="backup_peg",
-        implied_growth=None, sensitivity=None, switched_to_backup=True, switch_reason=reason,
+        score=score_backup_peg(peg, cfg),
+        method="backup_peg",
+        implied_growth=None,
+        sensitivity=None,
+        switched_to_backup=True,
+        switch_reason=reason,
     )
 
 
@@ -1718,7 +1997,9 @@ def score_valuation(
             ev_market, revenue0, margin0, margin_t, wacc, terminal_growth, cfg
         )
         sensitivity = None  # margin-model sensitivity uses same grid; omitted in M1, noted in docs
-        method: Literal["reverse_dcf", "reverse_dcf_margin", "backup_peg"] = "reverse_dcf_margin"
+        method: Literal["reverse_dcf", "reverse_dcf_margin", "backup_peg"] = (
+            "reverse_dcf_margin"
+        )
     else:
         sensitivity = run_sensitivity(ev_market, fcff0, wacc, terminal_growth, cfg)
         base_g = sensitivity.base_g
@@ -1730,15 +2011,24 @@ def score_valuation(
         return _backup(backup_peg, cfg, "no root in solver interval")
 
     floor = cfg.deviation["denominator_floor"]
-    deviations = [deviation(g, g_expected, floor) for g in ([base_g] if sensitivity is None else
-                  [sensitivity.min_g, sensitivity.max_g])]
+    deviations = [
+        deviation(g, g_expected, floor)
+        for g in (
+            [base_g] if sensitivity is None else [sensitivity.min_g, sensitivity.max_g]
+        )
+    ]
     if any(d >= 0.10 for d in deviations) and any(d < -0.10 for d in deviations):
-        return _backup(backup_peg, cfg, "sensitivity deviation spans undervalued and overvalued")
+        return _backup(
+            backup_peg, cfg, "sensitivity deviation spans undervalued and overvalued"
+        )
 
     return ValuationScore(
         score=score_deviation(deviation(base_g, g_expected, floor), cfg),
-        method=method, implied_growth=base_g, sensitivity=sensitivity,
-        switched_to_backup=False, switch_reason=None,
+        method=method,
+        implied_growth=base_g,
+        sensitivity=sensitivity,
+        switched_to_backup=False,
+        switch_reason=None,
     )
 ```
 

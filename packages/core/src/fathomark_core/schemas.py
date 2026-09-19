@@ -77,16 +77,22 @@ def validate_proposal(
         raise ProposalError(f"unknown factor: {proposal.factor}")
     steps = round((proposal.proposed_score - scale.min) / scale.step)
     snapped = scale.min + steps * scale.step
-    if abs(proposal.proposed_score - snapped) > 1e-9 or not (scale.min <= proposal.proposed_score <= scale.max):
+    if abs(proposal.proposed_score - snapped) > 1e-9 or not (
+        scale.min <= proposal.proposed_score <= scale.max
+    ):
         raise ProposalError(
             f"score {proposal.proposed_score} violates scale [{scale.min}, {scale.max}] step {scale.step}"
         )
     if not proposal.rationale.strip():
         raise ProposalError("rationale must not be empty")
     if proposal.as_of_date > data_cutoff:
-        raise ProposalError(f"proposal as_of_date {proposal.as_of_date} beyond cutoff {data_cutoff}")
+        raise ProposalError(
+            f"proposal as_of_date {proposal.as_of_date} beyond cutoff {data_cutoff}"
+        )
     for ev_id in proposal.evidence_ids + proposal.counter_evidence_ids:
         if ev_id not in evidence:
             raise ProposalError(f"unknown evidence id: {ev_id}")
         if evidence[ev_id] > data_cutoff:
-            raise ProposalError(f"evidence {ev_id} published after cutoff {data_cutoff}")
+            raise ProposalError(
+                f"evidence {ev_id} published after cutoff {data_cutoff}"
+            )

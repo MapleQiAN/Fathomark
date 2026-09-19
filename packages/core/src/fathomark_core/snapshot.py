@@ -43,7 +43,9 @@ def evaluate(
     proposals: list[FactorProposal],
 ) -> ScoreSnapshot:
     if scope.framework_ref != framework.framework_ref:
-        raise ValueError(f"scope framework {scope.framework_ref} != loaded {framework.framework_ref}")
+        raise ValueError(
+            f"scope framework {scope.framework_ref} != loaded {framework.framework_ref}"
+        )
     evidence_index: dict = {}
     for ev in evidence:
         if ev.id in evidence_index:
@@ -54,7 +56,12 @@ def evaluate(
         if p.factor in seen:
             raise ValueError(f"duplicate proposal for factor {p.factor}")
         seen.add(p.factor)
-        validate_proposal(p, framework=framework, evidence=evidence_index, data_cutoff=scope.data_cutoff)
+        validate_proposal(
+            p,
+            framework=framework,
+            evidence=evidence_index,
+            data_cutoff=scope.data_cutoff,
+        )
     missing = set(framework.factors) - seen
     if missing:
         raise ValueError(f"missing proposals for factors: {sorted(missing)}")
