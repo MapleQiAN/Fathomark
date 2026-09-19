@@ -701,23 +701,21 @@ _AGENT_STEP_NAMES = frozenset(name for name, _ in _AGENT_SPECS)
 and the return list becomes:
 
 ```python
-    return [
-        StepSpec("scope", (), RunState.CREATED, RunState.SCOPED, scope_step),
-        StepSpec(
-            "collect", ("scope",), RunState.SCOPED, RunState.COLLECTING, collect_step
-        ),
-        *(
-            StepSpec(name, ("collect",), RunState.ANALYZING, None, make_agent_step(cls))
-            for name, cls in _AGENT_SPECS
-        ),
-        StepSpec(
-            "compute",
-            tuple(name for name, _ in _AGENT_SPECS),
-            RunState.ANALYZING,
-            RunState.DRAFT,
-            compute_step,
-        ),
-    ]
+return [
+    StepSpec("scope", (), RunState.CREATED, RunState.SCOPED, scope_step),
+    StepSpec("collect", ("scope",), RunState.SCOPED, RunState.COLLECTING, collect_step),
+    *(
+        StepSpec(name, ("collect",), RunState.ANALYZING, None, make_agent_step(cls))
+        for name, cls in _AGENT_SPECS
+    ),
+    StepSpec(
+        "compute",
+        tuple(name for name, _ in _AGENT_SPECS),
+        RunState.ANALYZING,
+        RunState.DRAFT,
+        compute_step,
+    ),
+]
 ```
 
 8. Delete `fixture_agent.py`, `test_fixture_agent.py`, `stub_proposals.json`; remove `FixtureReplayAgent` from `__init__.py` imports/`__all__`.
