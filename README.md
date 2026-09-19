@@ -4,6 +4,8 @@
 
 <h1 align="center">Fathomark · 渊衡</h1>
 
+<p align="center"><a href="README.zh-CN.md">简体中文</a></p>
+
 <p align="center">
   <strong>深研有据，权衡有度。</strong><br />
   Evidence-first multi-agent equity research for people who want to see the reasoning.
@@ -40,6 +42,22 @@ That boundary is the heart of 渊衡. Agents can read, compare, explain and chal
     <td width="33%" valign="top"><strong>03 · Human gate</strong><br /><sub>Draft findings stay drafts until a reviewer approves an immutable release.</sub></td>
   </tr>
 </table>
+
+## How a score earns its grade
+
+<p align="center">
+  <img src="docs/assets/scoring-snapshot.svg" alt="Illustrative offline ADBE fixture snapshot: core lens 85.75 out of 100, A plus, high confidence, eleven evidence-backed factors, a clear Veto check and planned human review. Recorded fixture: adbe_2026-09-03." width="100%" />
+</p>
+
+> [!NOTE]
+> This is the checked, offline [`adbe_2026-09-03`](examples/fixtures/adbe_2026-09-03) reproducibility fixture — not a current rating, forecast, recommendation or trade instruction.
+
+1. **Set the frame.** Each run fixes one ordinary listed operating company, a cutoff date and the versioned [`common-stock@1.0.0`](frameworks/common-stock.yaml) framework.
+2. **Ground every factor.** Dated, source-linked evidence and counter-evidence support one 0–10 proposal for each of 11 factors. A gap is declared; prose does not smooth it away.
+3. **Calculate, then constrain.** `core`, `offensive` and `tactical` lenses reweight the same structured proposals for different research questions. Deterministic code turns the selected lens into a 100-point total and grade; a triggered Veto yields `X`, while insufficient confidence yields `NR` instead of a total.
+4. **Review before release — planned workflow.** The intended service keeps a score as a draft until a human approves an immutable evidence trail and input hash. That approval flow is a design commitment, not a claim that a review or publishing service is running today.
+
+The [full framework](frameworks/common-stock.yaml) remains the source of truth for factor anchors, lens weights, Veto thresholds and the complete rating spectrum.
 
 ## From question to report
 
