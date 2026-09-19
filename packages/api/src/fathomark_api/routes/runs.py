@@ -28,7 +28,11 @@ router = APIRouter()
 
 def _service(request: Request) -> RunService:
     repo = RunRepository(request.app.state.session_factory())
-    return RunService(repo, request.app.state.framework_dir)
+    return RunService(
+        repo,
+        request.app.state.framework_dir,
+        dispatcher=getattr(request.app.state, "webhook_dispatcher", None),
+    )
 
 
 def _run_response(row) -> RunResponse:

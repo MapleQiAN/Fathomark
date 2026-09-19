@@ -1,5 +1,6 @@
 """Service layer: orchestrates repository + deterministic core."""
 
+import time
 from pathlib import Path
 
 from fathomark_core import evaluate, load_framework
@@ -7,15 +8,23 @@ from fathomark_core.schemas import EvidenceItem, FactorProposal, ProposalError
 from fathomark_storage.repository import ConcurrencyError, RunRepository
 from fathomark_storage.state_machine import TERMINAL_STATES, RunState
 
+from fathomark_api.webhooks import WebhookDispatcher, WebhookEvent, notify
+
 
 class StateConflict(RuntimeError):
     pass
 
 
 class RunService:
-    def __init__(self, repo: RunRepository, framework_dir: Path):
+    def __init__(
+        self,
+        repo: RunRepository,
+        framework_dir: Path,
+        dispatcher: WebhookDispatcher | None = None,
+    ):
         self.repo = repo
         self.framework_dir = framework_dir
+        self.dispatcher = dispatcher
 
     def _require_state(self, run_id: str, *states: RunState):
         row = self.repo.get(run_id)
@@ -83,6 +92,15 @@ class RunService:
                 run_id, "return", None, None, None, req.reason, req.actor
             )
             self.repo.advance(run_id, RunState.NEEDS_REVIEW)
+            notify(
+                self.dispatcher,
+                WebhookEvent(
+                    event="needs_review",
+                    run_id=run_id,
+                    occurred_at=int(time.time()),
+                    payload={"reason": req.reason, "actor": req.actor},
+                ),
+            )
 
     def approve(self, run_id: str, expected_lock: int, idem_key: str, actor: str):
         replay = self.repo.find_version_by_idem(idem_key)
@@ -92,6 +110,15 @@ class RunService:
         version, _ = self.repo.create_version(run_id, idem_key, expected_lock)
         self.repo.record_decision(
             run_id, "approve", None, None, None, f"approved by {actor}", actor
+        )
+        notify(
+            self.dispatcher,
+            WebhookEvent(
+                event="approved",
+                run_id=run_id,
+                occurred_at=int(time.time()),
+                payload={"version_id": version.id, "actor": actor},
+            ),
         )
         return version, True
 

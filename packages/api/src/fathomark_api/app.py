@@ -6,13 +6,24 @@ from fastapi import FastAPI
 from fathomark_storage import create_session_factory, init_db
 
 from fathomark_api.routes.runs import router as runs_router
+from fathomark_api.webhooks import WebhookDispatcher
 
 
-def create_app(database_url: str, framework_dir: Path) -> FastAPI:
+def create_app(
+    database_url: str,
+    framework_dir: Path,
+    webhook_url: str | None = None,
+    webhook_secret: str | None = None,
+) -> FastAPI:
     app = FastAPI(title="Fathomark API", version="0.1.0")
     session_factory = create_session_factory(database_url)
     init_db(session_factory)
     app.state.session_factory = session_factory
     app.state.framework_dir = framework_dir
+    app.state.webhook_dispatcher = (
+        WebhookDispatcher(webhook_url, webhook_secret)
+        if webhook_url and webhook_secret
+        else None
+    )
     app.include_router(runs_router, prefix="/v1")
     return app
