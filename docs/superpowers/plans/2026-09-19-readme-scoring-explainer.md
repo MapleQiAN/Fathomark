@@ -107,13 +107,13 @@ Insert `## How a score earns its grade` between the three-card table and `## Fro
 Write four short, numbered paragraphs with these headings and exact semantic commitments:
 
 ```markdown
-1. Set the frame — one ordinary listed operating company, cutoff date, framework version.
-2. Ground every factor — dated evidence and counter-evidence support one 0–10 proposal for each of 11 factors; declared gaps are not smoothed away.
+1. Set the frame — one ordinary listed operating company, cutoff date, `common-stock@1.0.0` framework version.
+2. Ground every factor — dated, source-linked evidence and counter-evidence support one 0–10 proposal for each of 11 factors; declared gaps are not smoothed away.
 3. Calculate, then constrain — a selected lens deterministically weights proposals to 100 points and maps a grade; Veto and NR override the total.
 4. Review before release (planned workflow) — human approval/immutable release is a design commitment, not a running service claim.
 ```
 
-Follow with one sentence that `core`, `offensive` and `tactical` reweight the same evidence for different research lenses, plus a source link to `frameworks/common-stock.yaml` for the complete anchors, weights, thresholds and grade spectrum. State that ADBE is a checked, offline reproducibility fixture—not a current rating, forecast, recommendation or trade instruction.
+Follow with one sentence that `core`, `offensive` and `tactical` reweight the same evidence for different research lenses, plus a source link to `frameworks/common-stock.yaml` for the complete anchors, weights, thresholds and grade spectrum. The image `alt` text and adjacent fixture note must name the recorded `adbe_2026-09-03` fixture. State that its ADBE score is a checked, offline reproducibility fixture—not a current rating, forecast, recommendation or trade instruction.
 
 - [ ] **Step 3: Check rendered-document invariants in source**
 
