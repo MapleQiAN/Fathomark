@@ -46,7 +46,7 @@ That boundary is the heart of 渊衡. Agents can read, compare, explain and chal
 ## How a score earns its grade
 
 <p align="center">
-  <img src="docs/assets/scoring-snapshot.svg" alt="Illustrative offline ADBE fixture snapshot: core lens 85.75 out of 100, A plus, high confidence, eleven evidence-backed factors, a clear Veto check and planned human review. Recorded fixture: adbe_2026-09-03." width="100%" />
+  <img src="docs/assets/scoring-snapshot.svg" alt="Illustrative offline ADBE fixture snapshot: core lens 85.75 out of 100, A plus, high confidence, eleven evidence-backed factors, a clear Veto check and an approval API decision record. Recorded fixture: adbe_2026-09-03." width="100%" />
 </p>
 
 > [!NOTE]
@@ -55,7 +55,7 @@ That boundary is the heart of 渊衡. Agents can read, compare, explain and chal
 1. **Set the frame.** Each run fixes one ordinary listed operating company, a cutoff date and the versioned [`common-stock@1.0.0`](frameworks/common-stock.yaml) framework.
 2. **Ground every factor.** Dated, source-linked evidence and counter-evidence support one 0–10 proposal for each of 11 factors. A gap is declared; prose does not smooth it away.
 3. **Calculate, then constrain.** `core`, `offensive` and `tactical` lenses reweight the same structured proposals for different research questions. Deterministic code turns the selected lens into a 100-point total and grade; a triggered Veto yields `X`, while insufficient confidence yields `NR` instead of a total.
-4. **Review before release — planned workflow.** The intended service keeps a score as a draft until a human approves an immutable evidence trail and input hash. That approval flow is a design commitment, not a claim that a review or publishing service is running today.
+4. **Review before release — implemented API gate.** M2 implements the `draft` → `needs_review` → `approved` transitions and records the reviewer decision. Agent collection, background workers and report rendering/publishing remain planned, so this fixture is a checked core snapshot, not an official report.
 
 The [full framework](frameworks/common-stock.yaml) remains the source of truth for factor anchors, lens weights, Veto thresholds and the complete rating spectrum.
 

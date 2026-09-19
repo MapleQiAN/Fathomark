@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 360" role="img" aria-labelledby="title desc">
   <title id="title">Fathomark offline golden-fixture score snapshot</title>
-  <desc id="desc">An illustrative ADBE fixture dashboard with a core-lens score of 85.75 and A plus, high evidence confidence, eleven evidence-backed factor proposals, a clear Veto check, and planned human review.</desc>
+  <desc id="desc">An illustrative ADBE fixture dashboard with a core-lens score of 85.75 and A plus, high evidence confidence, eleven evidence-backed factor proposals, a clear Veto check, and an approval API decision record.</desc>
   <defs>
     <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
       <stop stop-color="#102A43"/>
@@ -29,12 +29,12 @@
       <text x="20" y="79" fill="#9CDBD3" font-size="31" font-weight="700">HIGH</text>
     </g>
 
-    <g transform="translate(756 182)" aria-label="Veto clear; planned human review required">
+    <g transform="translate(756 182)" aria-label="Veto clear; approval API records decision">
       <rect width="300" height="112" rx="14" fill="#153540" stroke="#31556F"/>
       <text x="20" y="31" fill="#B9C8D4" font-size="13" font-weight="700" letter-spacing="1.1">SCORING SAFEGUARDS</text>
       <text x="20" y="58" fill="#F5F1E8" font-size="16" font-weight="700">11 evidence-backed factors</text>
-      <text x="20" y="82" fill="#9CDBD3" font-size="13" font-weight="700">Veto clear · planned human</text>
-      <text x="20" y="102" fill="#9CDBD3" font-size="13" font-weight="700">review required</text>
+      <text x="20" y="82" fill="#9CDBD3" font-size="13" font-weight="700">Veto clear · approval API</text>
+      <text x="20" y="102" fill="#9CDBD3" font-size="13" font-weight="700">records decision</text>
     </g>
 
     <path d="M64 318h992" stroke="#31556F" opacity=".72"/>
