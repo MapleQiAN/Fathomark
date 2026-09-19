@@ -25,7 +25,7 @@
 <br />
 
 > [!IMPORTANT]
-> M1 已完成：`packages/core` 中的确定性评分核心已实现 `common-stock@1.0.0` 框架，并具备测试与离线金样夹具。API、智能体和报告渲染器仍在后续计划中——参见 [TODO.md](TODO.md)。
+> M1 与 M2 已完成：`packages/core` 中的确定性评分核心实现了 `common-stock@1.0.0` 框架；`packages/storage` 与 `packages/api` 补齐了运行状态机、存储、无界面 API、Python SDK、OpenAPI 契约与 HMAC Webhook（worker 仍在 M3）——参见 [TODO.md](TODO.md)。
 
 ## 一句话说明
 
@@ -46,7 +46,7 @@
 ## 一只股票如何获得它的评级
 
 <p align="center">
-  <img src="docs/assets/scoring-snapshot.svg" alt="说明性的离线 ADBE 夹具快照：核心 lens 为 85.75/100、A+、高置信度、11 个有证据支撑的因子、Veto 检查通过，以及规划中的人工审阅。记录夹具：adbe_2026-09-03。" width="100%" />
+  <img src="docs/assets/scoring-snapshot.svg" alt="说明性的离线 ADBE 夹具快照：核心视角为 85.75/100、A+、高置信度、11 个有证据支撑的因子、Veto 检查通过，以及规划中的人工审阅。记录夹具：adbe_2026-09-03。" width="100%" />
 </p>
 
 > [!NOTE]
@@ -54,10 +54,10 @@
 
 1. **确定边界。** 每次运行固定一只普通上市经营公司、一个截止日期，以及版本化的 [`common-stock@1.0.0`](frameworks/common-stock.yaml) 框架。
 2. **让每个因子落在证据上。** 带日期、可回溯来源的证据和反证，共同支撑 11 个因子中每一个 0–10 的提议分数。缺口会被声明，不能靠文字抹平。
-3. **先计算，再加约束。** `core`、`offensive` 与 `tactical` lens 使用同一组结构化提议，但针对不同研究问题重新加权。确定性代码将选定 lens 合成为 100 分总分和等级；触发 Veto 时结果为 `X`，置信度不足时为 `NR`，而非给出总分。
+3. **先计算，再加约束。** `core`、`offensive` 与 `tactical` 研究视角使用同一组结构化提议，但针对不同研究问题重新加权。确定性代码将选定视角合成为 100 分总分和等级；触发 Veto 时结果为 `X`，置信度不足时为 `NR`，而非给出总分。
 4. **发布前审阅——规划中的工作流。** 目标服务会让分数保留为草稿，直到人工核准包含证据链和输入哈希的不可变版本。该审批流程是设计承诺，并非声称审阅或发布服务今天已在运行。
 
-[完整框架](frameworks/common-stock.yaml)仍是因子锚点、lens 权重、Veto 阈值和完整评级区间的唯一事实来源。
+[完整框架](frameworks/common-stock.yaml)仍是因子锚点、视角权重、Veto 阈值和完整评级区间的唯一事实来源。
 
 ## 从问题到报告
 
@@ -65,7 +65,7 @@
 flowchart LR
     Q[研究问题] --> C[研究契约]
     C --> E[证据收集]
-    E --> L[专家 lens]
+    E --> L[专家视角]
     L --> S[确定性评分]
     S --> R[红队审查]
     R --> H{人工核准}
@@ -105,7 +105,7 @@ flowchart TB
     end
 
     subgraph Core[确定性核心]
-      SCHEMA[版本化 schema]
+      SCHEMA[版本化数据模式]
       SCORE[加权评分引擎]
       VETO[Veto 与 NR 规则]
       GRADE[评级映射]
@@ -189,7 +189,7 @@ Location: /v1/research-runs/run_01J...
 ```text
 fathomark/
 ├── packages/
-│   ├── core/          # schema、框架规则、评分、Veto 与评级映射
+│   ├── core/          # 数据模式、框架规则、评分、Veto 与评级映射
 │   ├── agents/        # 专家智能体契约和编排
 │   ├── providers/     # 文件、IR 与市场数据适配器
 │   ├── reports/       # JSON、HTML、Markdown 与 PDF 渲染器
@@ -230,7 +230,7 @@ cd Fathomark
 | 品牌、架构与契约 | ✅ 已定义 |
 | 确定性评分核心 | ✅ 已实现（M1） |
 | 智能体适配器与供应商记录 | ◻ 计划中 |
-| API 与工作器 | ◻ 计划中 |
+| API 与工作器 | API ✅ 已实现（M2）；worker ◻ M3 |
 | HTML / Markdown / PDF 渲染器 | ◻ 计划中 |
 | 自包含 Demo 与发布打包 | ◻ 计划中 |
 
