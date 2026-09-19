@@ -1,5 +1,9 @@
 """Provider protocols and offline test doubles."""
 
+from fathomark_providers.evidence import (
+    EvidenceProvider,
+    FixtureEvidenceProvider,
+)
 from fathomark_providers.fake import (
     FakeLLMProvider,
     RecordingLLMProvider,
@@ -14,7 +18,9 @@ from fathomark_providers.llm import (
 )
 
 __all__ = [
+    "EvidenceProvider",
     "FakeLLMProvider",
+    "FixtureEvidenceProvider",
     "LLMProvider",
     "LLMRequest",
     "LLMResponse",

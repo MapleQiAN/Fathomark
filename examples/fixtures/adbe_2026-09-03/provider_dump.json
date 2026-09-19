@@ -1,0 +1,14 @@
+{
+  "evidence": [
+    {"id": "ev_001", "source_name": "Adobe Q2 FY2026 Results", "source_class": "filings",
+     "url": "https://www.sec.gov/Archives/edgar/data/796343/000079634326000109/adbeex991q226.htm",
+     "published_date": "2026-06-11", "data_period_end": "2026-05-29",
+     "accessed_at": "2026-09-03T12:00:00", "grade": "A", "content_hash": "sha256:fixture1",
+     "excerpt": "Adobe reported record Q2 FY2026 revenue of $5.87 billion, up 11% year over year. Digital Media ARR grew to $18.4 billion; remaining performance obligations (RPO) reached $19.9 billion, up 13% year over year."},
+    {"id": "ev_002", "source_name": "Adobe FY2026 Q2 Form 10-Q", "source_class": "filings",
+     "url": "https://www.sec.gov/Archives/edgar/data/796343/000079634326000112/adbe-20260529.htm",
+     "published_date": "2026-06-15", "data_period_end": "2026-05-29",
+     "accessed_at": "2026-09-03T12:00:00", "grade": "A", "content_hash": "sha256:fixture2",
+     "excerpt": "For the quarter ended May 29, 2026, revenue was $5.87 billion. Cash flows from operations were $2.15 billion in the quarter and $4.6 billion for the first half of fiscal 2026; capital expenditures remained under 1% of revenue."}
+  ]
+}
