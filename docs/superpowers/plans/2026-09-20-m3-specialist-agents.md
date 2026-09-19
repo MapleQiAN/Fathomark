@@ -512,7 +512,9 @@ def test_business_agent_repairs_malformed_json(scope, evidence, framework):
     from fathomark_agents.specialist_agent import build_prompt
 
     cassette = json.loads((FIXTURE / "llm_cassette.json").read_text(encoding="utf-8"))
-    good = cassette[prompt_key(build_prompt(scope, evidence, BusinessAgent.instructions))]
+    good = cassette[
+        prompt_key(build_prompt(scope, evidence, BusinessAgent.instructions))
+    ]
     llm = FakeLLMProvider(["not json", good])
     proposals = BusinessAgent(llm).run(
         scope=scope, framework=framework, evidence=evidence
