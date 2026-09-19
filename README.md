@@ -23,7 +23,7 @@
 <br />
 
 > [!IMPORTANT]
-> Fathomark is currently a design-complete, implementation-pending open-source project. The repository defines the contracts and governance first; it does not yet ship a runnable scoring service.
+> M1 is done: the deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework with tests and an offline golden fixture. The API, agents and report renderers are still ahead — see [TODO.md](TODO.md).
 
 ## The idea in one sentence
 
@@ -182,14 +182,12 @@ fathomark/
 └── tests/             # contract, deterministic-core and integration tests
 ```
 
-## Start with the design
-
-The implementation is intentionally staged behind the contracts. Read these in order:
+## Read next
 
 1. [System design](docs/design/2026-09-18-fathomark-design.md) — architecture, data contracts, scoring governance and report formats.
 2. [Roadmap](TODO.md) — milestones, acceptance criteria and the remaining project work.
 
-When implementation begins, the first vertical slice will be a single-symbol run that can collect recorded evidence, calculate a deterministic score and render the same approved result as JSON, HTML, Markdown and PDF.
+The next vertical slice (M2) adds storage, the run state machine and a headless API: create a run, submit evidence-backed proposals, review and approve an immutable version.
 
 ## Get the repository
 
@@ -223,7 +221,7 @@ M1 scoring core 已实现：`packages/core` 承载 `common-stock@1.0.0` 框架�
 
 ## Contributing
 
-The project will welcome contributions once the first implementation slice lands. Until then, design feedback is most useful when it is concrete: point to a contract, state transition, evidence rule or report section and describe the failure mode it prevents.
+The project is pre-1.0 and the API surface is not stable yet. Feedback is most useful when it is concrete: point to a contract, state transition, evidence rule or report section and describe the failure mode it prevents.
 
 Planned community files include `LICENSE` (Apache-2.0), `NOTICE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` and `DISCLAIMER.md`.
 

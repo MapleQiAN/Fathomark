@@ -8,28 +8,28 @@
 - [ ] 确认 Python 包名、Docker 镜像名和未来 GitHub 组织/仓库名。
 - [ ] 补齐 Apache 2.0 `LICENSE` 与 `NOTICE`。
 - [ ] 编写 `SECURITY.md`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 和 `DISCLAIMER.md`。
-- [ ] 选择 Python 依赖管理与构建工具，并记录最低支持版本。
-- [ ] 建立 CI、格式化、静态检查、测试和依赖安全扫描。
-- [ ] 创建第一份可执行实施计划。
+- [x] 选择 Python 依赖管理与构建工具，并记录最低支持版本。(uv workspace + hatchling，Python ≥3.12)
+- [ ] 建立 CI、格式化、静态检查、测试和依赖安全扫描。(CI 已建；依赖安全扫描待补)
+- [x] 创建第一份可执行实施计划。(docs/design M1 计划已执行完毕)
 
-## 1. M1：确定性评分内核
+## 1. M1：确定性评分内核 ✅ 已完成
 
-- [ ] 从 PersonalInvestment 提取普通经营公司的 11 因子定义。
-- [ ] 提取核心、进攻和战术 Lens 权重。
-- [ ] 将 Veto、NR、评级光谱、置信度与数据新鲜度写入版本化 YAML。
-- [ ] 删除或隔离个人组合、具体仓位和交易动作规则。
-- [ ] 定义 `ScopeSnapshot`、`EvidenceItem`、`MetricObservation`、`FactorProposal`、`ScoreSnapshot` Schema。
-- [ ] 实现框架加载、Schema 校验和版本解析。
-- [ ] 实现 0.5 分步长、加权计算、舍入、Veto 和评级映射。
-- [ ] 实现反向 DCF 与敏感性分析的确定性计算接口。
-- [ ] 为所有边界、非法配置和 Veto 优先级补齐单元测试。
-- [ ] 增加属性测试，验证相同输入始终得到相同结果。
+- [x] 从 PersonalInvestment 提取普通经营公司的 11 因子定义。
+- [x] 提取核心、进攻和战术 Lens 权重。
+- [x] 将 Veto、NR、评级光谱、置信度与数据新鲜度写入版本化 YAML。(frameworks/common-stock.yaml)
+- [x] 删除或隔离个人组合、具体仓位和交易动作规则。
+- [x] 定义 `ScopeSnapshot`、`EvidenceItem`、`MetricObservation`、`FactorProposal`、`ScoreSnapshot` Schema。
+- [x] 实现框架加载、Schema 校验和版本解析。
+- [x] 实现 0.5 分步长、加权计算、舍入、Veto 和评级映射。
+- [x] 实现反向 DCF 与敏感性分析的确定性计算接口。
+- [x] 为所有边界、非法配置和 Veto 优先级补齐单元测试。
+- [x] 增加属性测试，验证相同输入始终得到相同结果。
 
 ### M1 完成标准
 
-- [ ] 固定 JSON 输入能离线生成完整、可复现的评分快照。
-- [ ] `common-stock@1.0.0` 权重和评级边界全部通过测试。
-- [ ] `core` 不依赖网络、数据库或任何 LLM SDK。
+- [x] 固定 JSON 输入能离线生成完整、可复现的评分快照。(examples/fixtures/adbe_2026-09-03 金样)
+- [x] `common-stock@1.0.0` 权重和评级边界全部通过测试。
+- [x] `core` 不依赖网络、数据库或任何 LLM SDK。
 
 ## 2. M2：存储、状态机与 Headless API
 
