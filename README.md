@@ -25,7 +25,7 @@
 <br />
 
 > [!IMPORTANT]
-> M1 and M2 are done: the deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework, and `packages/storage` + `packages/api` add the run state machine, storage, headless API, Python SDK, OpenAPI contract and HMAC webhooks (worker still ahead in M3) — see [TODO.md](TODO.md).
+> M1 and M2 are done, and the first M3 vertical slice has landed: the deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework; `packages/storage` + `packages/api` add the run state machine, storage, headless API, Python SDK, OpenAPI contract and HMAC webhooks; the M3 slice adds the LLM/evidence provider protocols, scope and financial agents, a resumable step orchestrator and an offline ADBE end-to-end run from creation to a draft snapshot — see [TODO.md](TODO.md).
 
 ## The idea in one sentence
 
@@ -55,7 +55,7 @@ That boundary is the heart of 渊衡. Agents can read, compare, explain and chal
 1. **Set the frame.** Each run fixes one ordinary listed operating company, a cutoff date and the versioned [`common-stock@1.0.0`](frameworks/common-stock.yaml) framework.
 2. **Ground every factor.** Dated, source-linked evidence and counter-evidence support one 0–10 proposal for each of 11 factors. A gap is declared; prose does not smooth it away.
 3. **Calculate, then constrain.** `core`, `offensive` and `tactical` lenses reweight the same structured proposals for different research questions. Deterministic code turns the selected lens into a 100-point total and grade; a triggered Veto yields `X`, while insufficient confidence yields `NR` instead of a total.
-4. **Review before release — implemented API gate.** M2 implements the `draft` → `needs_review` → `approved` transitions and records the reviewer decision. Agent collection, background workers and report rendering/publishing remain planned, so this fixture is a checked core snapshot, not an official report.
+4. **Review before release — implemented API gate.** M2 implements the `draft` → `needs_review` → `approved` transitions and records the reviewer decision. The first M3 slice now runs agent collection offline (scope + financial agents; the other 9 factors replay recorded fixtures), while background workers and report rendering/publishing remain planned, so this fixture is a checked core snapshot, not an official report.
 
 ### The 11 factors and their weights
 
@@ -230,7 +230,7 @@ fathomark/
 1. [System design](docs/design/2026-09-18-fathomark-design.md) — architecture, data contracts, scoring governance and report formats.
 2. [Roadmap](TODO.md) — milestones, acceptance criteria and the remaining project work.
 
-M2 is done: `packages/storage` and `packages/api` implement the run state machine, SQLite/PostgreSQL storage, the headless API (create, query, cancel, retry, review, approve, result), the Python SDK in `packages/sdk`, the versioned OpenAPI contract and HMAC webhooks. The background worker arrives with M3, and the agent adapters and report renderers are still ahead — see [TODO.md](TODO.md).
+M2 is done: `packages/storage` and `packages/api` implement the run state machine, SQLite/PostgreSQL storage, the headless API (create, query, cancel, retry, review, approve, result), the Python SDK in `packages/sdk`, the versioned OpenAPI contract and HMAC webhooks. The first M3 vertical slice adds the provider protocols with fake/replay/recording test doubles, the scope and financial agents with a repair loop, and a step-recorded orchestrator that drives an offline ADBE fixture from run creation to a draft snapshot. The asynchronous worker, remaining agents and report renderers are still ahead — see [TODO.md](TODO.md).
 
 ## Get the repository
 
@@ -254,8 +254,8 @@ cd Fathomark
 | --- | --- |
 | Brand, architecture and contracts | ✅ Defined |
 | Deterministic scoring core | ✅ Implemented (M1) |
-| Agent adapters and provider recordings | ◻ Planned |
-| API and worker | API ✅ Implemented (M2); worker ◻ M3 |
+| Agent adapters and provider recordings | Protocols + scope/financial agents ✅ (M3 slice); remaining agents ◻ Planned |
+| API and worker | API ✅ Implemented (M2); orchestrator ✅ (M3 slice); background worker ◻ Planned |
 | HTML / Markdown / PDF renderer | ◻ Planned |
 | Self-contained demo and release packaging | ◻ Planned |
 

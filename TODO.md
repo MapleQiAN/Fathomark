@@ -49,12 +49,12 @@
 ### M2 完成标准
 
 - [x] 使用固定 fixture 可以从 API 创建任务、审核并批准不可变版本。(packages/api/tests/test_e2e_adbe.py)
-- [ ] Worker 中断后只恢复未完成步骤。(依赖 M3 worker，保持未完成)
+- [x] Worker 中断后只恢复未完成步骤。(M3 切片：execute 重入 + step_runs 输入哈希实现步骤级恢复；异步 worker 进程仍在后续)
 - [x] 重复请求不会产生重复正式版本。(幂等键测试)
 
 ## 3. M3：美股 Provider 与专业 Agent
 
-- [ ] 实现 LLM Provider 通用协议。
+- [x] 实现 LLM Provider 通用协议。(packages/providers：LLMProvider/LLMRequest/LLMResponse/ProviderError)
 - [ ] 实现 OpenAI Provider。
 - [ ] 实现 Anthropic Provider。
 - [ ] 实现 OpenAI-compatible Provider。
@@ -62,18 +62,20 @@
 - [ ] 实现公司 IR 文档 Provider。
 - [ ] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。
 - [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。
-- [ ] 实现 Scope Agent。
+- [x] 实现 Scope Agent。(packages/agents ScopeAgent)
 - [ ] 实现 Business Agent。
-- [ ] 实现 Financial Agent。
+- [x] 实现 Financial Agent。(financial_health + earnings_quality，录制 cassette 回放)
+  - 注：其余 9 个因子暂由 FixtureReplayAgent 从录制夹具回放（origin="fixture"），待对应真实 Agent 落地后逐个替换。
 - [ ] 实现 Growth Agent。
 - [ ] 实现 Valuation Agent。
 - [ ] 实现 Governance & Risk Agent。
 - [ ] 实现 Market Agent。
 - [ ] 实现 Red-Team Agent。
-- [ ] 实现 Agent 输出结构修复与最多两次重试。
+- [x] 实现 Agent 输出结构修复与最多两次重试。(complete_with_repairs：1 次初始 + 至多 2 次修复)
 - [ ] 实现证据冲突、数据截止日、数据新鲜度和 NR 规则。
-- [ ] 实现调用次数、Token、金额和运行时间预算。
-- [ ] 建立录制响应和离线 Agent 契约测试。
+- [x] 数据截止日校验（本切片范围）。(collect 步骤过滤超出截止日的证据；提议引用不存在或超出截止日的证据被拒绝)
+- [ ] 实现调用次数、Token、金额和运行时间预算。(调用次数预算已实现：max_llm_calls=32；Token/金额/运行时间待补)
+- [x] 建立录制响应和离线 Agent 契约测试。(Fake/Replay/RecordingLLMProvider + 录制契约测试)
 
 ### M3 完成标准
 

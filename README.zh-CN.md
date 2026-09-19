@@ -25,7 +25,7 @@
 <br />
 
 > [!IMPORTANT]
-> M1 与 M2 已完成：`packages/core` 中的确定性评分核心实现了 `common-stock@1.0.0` 框架；`packages/storage` 与 `packages/api` 补齐了运行状态机、存储、无界面 API、Python SDK、OpenAPI 契约与 HMAC Webhook（worker 仍在 M3）——参见 [TODO.md](TODO.md)。
+> M1 与 M2 已完成，M3 首个垂直切片已落地：`packages/core` 中的确定性评分核心实现了 `common-stock@1.0.0` 框架；`packages/storage` 与 `packages/api` 补齐了运行状态机、存储、无界面 API、Python SDK、OpenAPI 契约与 HMAC Webhook；M3 切片新增 LLM/证据 Provider 协议、Scope 与 Financial 智能体、可恢复的步骤编排器，以及从创建到草稿快照的离线 ADBE 端到端运行——参见 [TODO.md](TODO.md)。
 
 ## 一句话说明
 
@@ -55,7 +55,7 @@
 1. **确定边界。** 每次运行固定一只普通上市经营公司、一个截止日期，以及版本化的 [`common-stock@1.0.0`](frameworks/common-stock.yaml) 框架。
 2. **让每个因子落在证据上。** 带日期、可回溯来源的证据和反证，共同支撑 11 个因子中每一个 0–10 的提议分数。缺口会被声明，不能靠文字抹平。
 3. **先计算，再加约束。** `core`、`offensive` 与 `tactical` 研究视角使用同一组结构化提议，但针对不同研究问题重新加权。确定性代码将选定视角合成为 100 分总分和等级；触发 Veto 时结果为 `X`，置信度不足时为 `NR`，而非给出总分。
-4. **发布前审阅——已实现的 API 关口。** M2 已实现 `draft` → `needs_review` → `approved` 状态流转，并记录审阅者决策。智能体收集、后台 worker 与报告渲染/发布仍在后续计划中，因此该夹具是经过检查的核心快照，而非正式报告。
+4. **发布前审阅——已实现的 API 关口。** M2 已实现 `draft` → `needs_review` → `approved` 状态流转，并记录审阅者决策。M3 首个切片已能离线运行智能体收集（Scope 与 Financial 智能体；其余 9 个因子回放录制夹具），后台 worker 与报告渲染/发布仍在后续计划中，因此该夹具是经过检查的核心快照，而非正式报告。
 
 ### 11 个因子与它们的权重
 
@@ -230,7 +230,7 @@ fathomark/
 1. [系统设计](docs/design/2026-09-18-fathomark-design.md)——架构、数据契约、评分治理和报告格式。
 2. [路线图](TODO.md)——里程碑、验收标准和项目剩余工作。
 
-M2 已完成：`packages/storage` 与 `packages/api` 实现了运行状态机、SQLite/PostgreSQL 存储、无界面 API（创建、查询、取消、重试、审阅、批准、结果）、`packages/sdk` 中的 Python SDK、版本化 OpenAPI 契约与 HMAC Webhook。后台 worker 随 M3 交付，智能体适配器与报告渲染器仍在后续计划中——参见 [TODO.md](TODO.md)。
+M2 已完成：`packages/storage` 与 `packages/api` 实现了运行状态机、SQLite/PostgreSQL 存储、无界面 API（创建、查询、取消、重试、审阅、批准、结果）、`packages/sdk` 中的 Python SDK、版本化 OpenAPI 契约与 HMAC Webhook。M3 首个垂直切片新增 Provider 协议及 Fake/Replay/Recording 测试替身、带修复重试的 Scope 与 Financial 智能体，以及记录步骤、驱动离线 ADBE 夹具从创建运行到草稿快照的编排器。异步 worker、其余智能体与报告渲染器仍在后续计划中——参见 [TODO.md](TODO.md)。
 
 ## 获取仓库
 
@@ -254,8 +254,8 @@ cd Fathomark
 | --- | --- |
 | 品牌、架构与契约 | ✅ 已定义 |
 | 确定性评分核心 | ✅ 已实现（M1） |
-| 智能体适配器与供应商记录 | ◻ 计划中 |
-| API 与工作器 | API ✅ 已实现（M2）；worker ◻ M3 |
+| 智能体适配器与供应商记录 | 协议 + Scope/Financial 智能体 ✅（M3 切片）；其余智能体 ◻ 计划中 |
+| API 与工作器 | API ✅ 已实现（M2）；编排器 ✅（M3 切片）；后台 worker ◻ 计划中 |
 | HTML / Markdown / PDF 渲染器 | ◻ 计划中 |
 | 自包含 Demo 与发布打包 | ◻ 计划中 |
 
