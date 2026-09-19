@@ -7,6 +7,7 @@ members = [
     "fathomark",
     "fathomark-api",
     "fathomark-core",
+    "fathomark-sdk",
     "fathomark-storage",
 ]
 
@@ -96,6 +97,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "fathomark-api" },
     { name = "fathomark-core" },
+    { name = "fathomark-sdk" },
     { name = "fathomark-storage" },
 ]
 
@@ -111,6 +113,7 @@ dev = [
 requires-dist = [
     { name = "fathomark-api", editable = "packages/api" },
     { name = "fathomark-core", editable = "packages/core" },
+    { name = "fathomark-sdk", editable = "packages/sdk" },
     { name = "fathomark-storage", editable = "packages/storage" },
 ]
 
@@ -153,6 +156,17 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
+
+[[package]]
+name = "fathomark-sdk"
+version = "0.1.0"
+source = { editable = "packages/sdk" }
+dependencies = [
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "fathomark-storage"
