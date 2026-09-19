@@ -29,7 +29,7 @@
       <text x="20" y="79" fill="#9CDBD3" font-size="31" font-weight="700">HIGH</text>
     </g>
 
-    <g transform="translate(756 182)">
+    <g transform="translate(756 182)" aria-label="Veto clear; planned human review required">
       <rect width="300" height="112" rx="14" fill="#153540" stroke="#31556F"/>
       <text x="20" y="31" fill="#B9C8D4" font-size="13" font-weight="700" letter-spacing="1.1">SCORING SAFEGUARDS</text>
       <text x="20" y="58" fill="#F5F1E8" font-size="16" font-weight="700">11 evidence-backed factors</text>
