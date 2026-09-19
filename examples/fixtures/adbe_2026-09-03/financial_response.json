@@ -1,6 +1,0 @@
-{
-  "proposals": [
-    {"factor": "financial_health", "proposed_score": 9.5, "rationale": "轻资本百亿美元OCF债务可覆盖", "evidence_ids": ["ev_002"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"},
-    {"factor": "earnings_quality", "proposed_score": 10.0, "rationale": "高订阅高FCF转化极低资本开支", "evidence_ids": ["ev_002"], "counter_evidence_ids": [], "confidence": "high", "missing_data": [], "as_of_date": "2026-09-03"}
-  ]
-}

@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 from fathomark_agents import AgentError, FinancialAgent
-from fathomark_agents.financial_agent import FINANCIAL_FACTORS
+from fathomark_agents.financial_agent import FINANCIAL_FACTORS, build_prompt
 from fathomark_core import load_framework
-from fathomark_providers import FakeLLMProvider, ReplayLLMProvider
+from fathomark_providers import FakeLLMProvider, ReplayLLMProvider, prompt_key
 
 ROOT = Path(__file__).parents[3]
 FIXTURE = ROOT / "examples" / "fixtures" / "adbe_2026-09-03"
@@ -41,7 +41,8 @@ def test_unknown_evidence_reference_rejected_then_repaired(scope, evidence, fram
             ]
         }
     )
-    good = (FIXTURE / "financial_response.json").read_text(encoding="utf-8")
+    cassette = json.loads((FIXTURE / "llm_cassette.json").read_text(encoding="utf-8"))
+    good = cassette[prompt_key(build_prompt(scope, evidence))]
     llm = FakeLLMProvider([bad, good])
     proposals = FinancialAgent(llm).run(
         scope=scope, framework=framework, evidence=evidence
