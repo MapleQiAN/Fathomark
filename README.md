@@ -232,7 +232,7 @@ cd Fathomark
 | Agent adapters and provider recordings | ◻ Planned |
 | API and worker | ◻ Planned |
 | HTML / Markdown / PDF renderer | ◻ Planned |
-| PersonalInvestment adapter | ◻ Planned |
+| Self-contained demo and release packaging | ◻ Planned |
 
 M1 scoring core 已实现：`packages/core` 承载 `common-stock@1.0.0` 框架的确定性评分、Veto 与评级映射。
 离线可复现：`examples/fixtures/adbe_2026-09-03` 金样测试证明同一 JSON 输入永远得到同一快照（ADBE 核心 85.75 / A+）。
