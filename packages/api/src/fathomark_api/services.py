@@ -101,20 +101,23 @@ class RunService:
             raise StateConflict(f"run {run_id} already terminal ({row.state})")
         self.repo.advance(run_id, RunState.CANCELLED)
 
-    def retry(self, run_id: str) -> None:
-        """Retry a failed run.
+    def retry(self, run_id: str, idem_key: str) -> None:
+        """Retry a failed run, idempotent per run + key.
 
-        Idempotent-replay simplification: no retry-key storage. If the run has
-        already left ``failed`` into ``collecting``, we treat the request as a
-        replay and succeed without a state change; any other non-failed state
-        conflicts.
+        On success the key is persisted on the run row. A later request with
+        the same key against the now-``collecting`` run is a replay and returns
+        without change; any other state or a mismatched key conflicts.
         """
         row = self.repo.get(run_id)
-        if RunState(row.state) == RunState.COLLECTING:
+        state = RunState(row.state)
+        if state == RunState.FAILED:
+            self.repo.advance(run_id, RunState.COLLECTING)
+            row.retry_idem_key = idem_key
+            self.repo.session.flush()
+        elif state == RunState.COLLECTING and row.retry_idem_key == idem_key:
             return
-        if RunState(row.state) != RunState.FAILED:
+        else:
             raise StateConflict(f"run {run_id} in state {row.state}")
-        self.repo.advance(run_id, RunState.COLLECTING)
 
     def resolve_review(self, run_id: str, reason: str, actor: str) -> None:
         self._require_state(run_id, RunState.NEEDS_REVIEW)

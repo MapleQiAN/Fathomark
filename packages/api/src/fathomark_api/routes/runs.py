@@ -234,7 +234,7 @@ def retry(
     service = _service(request)
 
     def op():
-        service.retry(run_id)
+        service.retry(run_id, idempotency_key)
         return _run_response(service.repo.get(run_id))
 
     return _handle(service, op)

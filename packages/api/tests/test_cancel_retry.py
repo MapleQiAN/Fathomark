@@ -129,6 +129,59 @@ def test_retry_replay_after_success_200(client):
     assert r2.json()["state"] == "collecting"
 
 
+def _run_to_collecting(client, key_prefix) -> str:
+    """Fixture run through evidence ingest only; returns run_id in collecting."""
+    import json
+
+    from conftest import ROOT
+
+    data = json.loads(
+        (ROOT / "examples" / "fixtures" / "adbe_2026-09-03" / "input.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    r = client.post(
+        "/v1/research-runs",
+        json=data["scope"],
+        headers={"Idempotency-Key": f"{key_prefix}-create"},
+    )
+    assert r.status_code == 201
+    run_id = r.json()["id"]
+    assert (
+        client.post(
+            f"/v1/research-runs/{run_id}/evidence", json={"evidence": data["evidence"]}
+        ).status_code
+        == 200
+    )
+    assert client.get(f"/v1/research-runs/{run_id}").json()["state"] == "collecting"
+    return run_id
+
+
+def test_retry_on_normal_flow_collecting_409(client):
+    """collecting reached without a prior failure must not look like a replay."""
+    run_id = _run_to_collecting(client, "retry-5")
+    r = client.post(
+        f"/v1/research-runs/{run_id}/retry",
+        headers={"Idempotency-Key": "retry-5"},
+    )
+    assert r.status_code == 409
+
+
+def test_retry_on_collecting_with_different_key_409(client):
+    run_id = run_to_draft(client, "retry-6")
+    _set_state(client, run_id, "failed")
+    r1 = client.post(
+        f"/v1/research-runs/{run_id}/retry",
+        headers={"Idempotency-Key": "retry-6"},
+    )
+    assert r1.status_code == 200
+    r2 = client.post(
+        f"/v1/research-runs/{run_id}/retry",
+        headers={"Idempotency-Key": "retry-6-other"},
+    )
+    assert r2.status_code == 409
+
+
 # --- resolve-review ---
 
 

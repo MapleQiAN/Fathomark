@@ -26,6 +26,7 @@ class ResearchRunRow(Base):
     lock_version: Mapped[int] = mapped_column(Integer, default=0)
     supersedes_id: Mapped[str | None] = mapped_column(String(40))
     error: Mapped[str | None] = mapped_column(Text)
+    retry_idem_key: Mapped[str | None] = mapped_column(String(80))
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
 
