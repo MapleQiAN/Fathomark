@@ -34,3 +34,8 @@ def test_cancelled_is_terminal():
 def test_needs_review_resolves_to_draft():
     assert transition(RunState.DRAFT, RunState.NEEDS_REVIEW) == RunState.NEEDS_REVIEW
     assert transition(RunState.NEEDS_REVIEW, RunState.DRAFT) == RunState.DRAFT
+
+
+def test_needs_review_reenters_analyzing_for_step_retry():
+    # Re-execution of a blocked step after fixing the provider.
+    assert transition(RunState.NEEDS_REVIEW, RunState.ANALYZING) == RunState.ANALYZING

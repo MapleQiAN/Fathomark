@@ -44,7 +44,7 @@ TRANSITIONS: dict[RunState, frozenset[RunState]] = {
         {RunState.DRAFT, RunState.NEEDS_REVIEW, RunState.CANCELLED, RunState.FAILED}
     ),
     RunState.NEEDS_REVIEW: frozenset(
-        {RunState.DRAFT, RunState.CANCELLED, RunState.FAILED}
+        {RunState.ANALYZING, RunState.DRAFT, RunState.CANCELLED, RunState.FAILED}
     ),
     RunState.DRAFT: frozenset(
         {RunState.APPROVED, RunState.NEEDS_REVIEW, RunState.CANCELLED}

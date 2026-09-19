@@ -1,0 +1,81 @@
+import json
+from pathlib import Path
+
+import pytest
+from fathomark_agents import Orchestrator, OrchestratorError
+from fathomark_core import load_framework
+from fathomark_providers import (
+    FakeLLMProvider,
+    FixtureEvidenceProvider,
+    ProviderError,
+    ReplayLLMProvider,
+)
+from fathomark_storage.state_machine import RunState
+
+ROOT = Path(__file__).parents[3]
+FIXTURE = ROOT / "examples" / "fixtures" / "adbe_2026-09-03"
+EXPECTED = json.loads((FIXTURE / "expected_snapshot.json").read_text(encoding="utf-8"))
+
+
+def _orchestrator(repo, llm, **kwargs):
+    return Orchestrator(
+        repo,
+        load_framework(ROOT / "frameworks" / "common-stock.yaml"),
+        llm=llm,
+        evidence_providers=[FixtureEvidenceProvider(FIXTURE / "provider_dump.json")],
+        stub_path=FIXTURE / "stub_proposals.json",
+        **kwargs,
+    )
+
+
+def test_full_run_reaches_draft_matching_golden(seeded_run):
+    repo, run_id = seeded_run
+    state = _orchestrator(
+        repo, ReplayLLMProvider(FIXTURE / "llm_cassette.json")
+    ).execute(run_id)
+    assert state == RunState.DRAFT
+    snap = repo.latest_snapshot(run_id)
+    assert snap.snapshot_json == EXPECTED
+    steps = {s.step: s for s in repo.steps_of(run_id)}
+    assert set(steps) == {"scope", "collect", "financial", "stub", "compute"}
+    assert all(s.status == "succeeded" for s in steps.values())
+
+
+def test_resume_after_provider_failure_skips_finished_steps(seeded_run):
+    repo, run_id = seeded_run
+    bad = FakeLLMProvider([ProviderError("llm down", retriable=False)])
+    assert _orchestrator(repo, bad).execute(run_id) == RunState.FAILED
+    assert repo.get(run_id).error
+    first_attempts = {s.step: s.attempt for s in repo.steps_of(run_id)}
+    good = ReplayLLMProvider(FIXTURE / "llm_cassette.json")
+    assert _orchestrator(repo, good).execute(run_id) == RunState.DRAFT
+    steps = {s.step: s for s in repo.steps_of(run_id)}
+    assert steps["scope"].attempt == first_attempts["scope"]  # not re-run
+    assert steps["collect"].attempt == first_attempts["collect"]
+    assert steps["financial"].attempt == 2  # retried
+    assert len(repo.evidence_of(run_id)) == 2  # no duplicates
+
+
+def test_agent_error_sends_run_to_needs_review_and_recovers(seeded_run):
+    repo, run_id = seeded_run
+    bad = FakeLLMProvider(["garbage", "garbage", "garbage"])
+    assert _orchestrator(repo, bad).execute(run_id) == RunState.NEEDS_REVIEW
+    assert repo.proposals_of(run_id) == []  # nothing fake persisted
+    good = ReplayLLMProvider(FIXTURE / "llm_cassette.json")
+    assert _orchestrator(repo, good).execute(run_id) == RunState.DRAFT
+
+
+def test_llm_budget_exceeded_fails_run(seeded_run):
+    repo, run_id = seeded_run
+    llm = ReplayLLMProvider(FIXTURE / "llm_cassette.json")
+    orch = _orchestrator(repo, llm, max_llm_calls=0)
+    assert orch.execute(run_id) == RunState.FAILED
+    assert "budget" in repo.get(run_id).error
+
+
+def test_execute_on_terminal_run_raises(seeded_run):
+    repo, run_id = seeded_run
+    repo.advance(run_id, RunState.CANCELLED)
+    orch = _orchestrator(repo, ReplayLLMProvider(FIXTURE / "llm_cassette.json"))
+    with pytest.raises(OrchestratorError):
+        orch.execute(run_id)
