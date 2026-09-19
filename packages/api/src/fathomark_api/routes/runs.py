@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Header, Request, Response
 from fastapi.responses import JSONResponse
+from fathomark_agents.orchestrator import OrchestratorError
 from fathomark_core.schemas import (
     EvidenceItem,
     FactorProposal,
@@ -160,6 +161,25 @@ def ingest_proposals(run_id: str, payload: IngestProposalsRequest, request: Requ
 def compute(run_id: str, request: Request):
     service = _service(request)
     return _handle(service, lambda: service.compute(run_id).model_dump(mode="json"))
+
+
+@router.post("/research-runs/{run_id}/execute")
+def execute(run_id: str, request: Request):
+    factory = getattr(request.app.state, "orchestrator_factory", None)
+    if factory is None:
+        return JSONResponse({"detail": "orchestrator not configured"}, status_code=503)
+    service = _service(request)
+
+    def op():
+        try:
+            # Fresh orchestrator per call: the LLM call budget is counted per
+            # Orchestrator instance, so sharing one would leak budget across runs.
+            factory(service.repo).execute(run_id)
+        except OrchestratorError as exc:
+            raise StateConflict(str(exc)) from exc
+        return _run_response(service.repo.get(run_id))
+
+    return _handle(service, op)
 
 
 @router.get("/research-runs/{run_id}/result")

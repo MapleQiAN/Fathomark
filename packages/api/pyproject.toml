@@ -5,7 +5,9 @@ description = "Headless REST API for Fathomark"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
+    "fathomark-agents",
     "fathomark-core",
+    "fathomark-providers",
     "fathomark-storage",
     "httpx>=0.27",
 ]
@@ -18,5 +20,7 @@ build-backend = "hatchling.build"
 packages = ["src/fathomark_api"]
 
 [tool.uv.sources]
+fathomark-agents = { workspace = true }
 fathomark-core = { workspace = true }
+fathomark-providers = { workspace = true }
 fathomark-storage = { workspace = true }

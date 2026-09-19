@@ -227,6 +227,43 @@
         }
       }
     },
+    "/v1/research-runs/{run_id}/execute": {
+      "post": {
+        "summary": "Execute",
+        "operationId": "execute_v1_research_runs__run_id__execute_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/research-runs/{run_id}/result": {
       "get": {
         "summary": "Get Result",

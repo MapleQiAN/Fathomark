@@ -1,5 +1,6 @@
 """FastAPI app factory."""
 
+from collections.abc import Callable
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -14,6 +15,7 @@ def create_app(
     framework_dir: Path,
     webhook_url: str | None = None,
     webhook_secret: str | None = None,
+    orchestrator_factory: Callable | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Fathomark API", version="0.1.0")
     session_factory = create_session_factory(database_url)
@@ -25,5 +27,6 @@ def create_app(
         if webhook_url and webhook_secret
         else None
     )
+    app.state.orchestrator_factory = orchestrator_factory
     app.include_router(runs_router, prefix="/v1")
     return app
