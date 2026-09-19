@@ -57,7 +57,32 @@ That boundary is the heart of 渊衡. Agents can read, compare, explain and chal
 3. **Calculate, then constrain.** `core`, `offensive` and `tactical` lenses reweight the same structured proposals for different research questions. Deterministic code turns the selected lens into a 100-point total and grade; a triggered Veto yields `X`, while insufficient confidence yields `NR` instead of a total.
 4. **Review before release — implemented API gate.** M2 implements the `draft` → `needs_review` → `approved` transitions and records the reviewer decision. Agent collection, background workers and report rendering/publishing remain planned, so this fixture is a checked core snapshot, not an official report.
 
-The [full framework](frameworks/common-stock.yaml) remains the source of truth for factor anchors, lens weights, Veto thresholds and the complete rating spectrum.
+### The 11 factors and their weights
+
+<p align="center">
+  <img src="docs/assets/scoring-weights.svg" alt="Weight map for the common-stock framework. Core allocates 64 percent to fundamentals, 27 percent to growth and valuation, and 9 percent to market factors. Offensive allocates 37, 49, and 14 percent. Tactical allocates 13, 16, and 71 percent." width="100%" />
+</p>
+
+The map shows the shape; this table carries every number. Each lens reweights the same evidence-backed 0–10 proposals, rather than creating a separate evidence standard.
+
+| Factor | Category | `core` | `offensive` | `tactical` |
+| --- | --- | ---: | ---: | ---: |
+| Business moat | Fundamentals | 22% | 15% | 3% |
+| Financial health | Fundamentals | 22% | 8% | 8% |
+| Governance | Fundamentals | 12% | 8% | 2% |
+| Policy risk | Fundamentals | 8% | 6% | 0% |
+| Growth sustainability | Growth / valuation | 5% | 24% | 0% |
+| Valuation | Growth / valuation | 11% | 17% | 10% |
+| Earnings quality | Growth / valuation | 11% | 8% | 6% |
+| Trend / momentum | Market | 1% | 5% | 20% |
+| Liquidity | Market | 2% | 3% | 16% |
+| Volatility / downside | Market | 6% | 2% | 13% |
+| Catalyst window | Market | 0% | 4% | 22% |
+| **Total** |  | **100%** | **100%** | **100%** |
+
+`core` prioritizes business quality and financial resilience. `offensive` puts almost half its weight on growth and valuation. `tactical` concentrates on timing, liquidity, downside and catalysts. A high score elsewhere cannot offset a Veto or turn insufficient confidence into a number.
+
+The [full framework](frameworks/common-stock.yaml) remains the source of truth for factor anchors, lens weights, Veto thresholds and the complete rating spectrum. Changing a weight requires a framework version change, not a README edit.
 
 ## From question to report
 

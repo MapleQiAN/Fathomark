@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 400" role="img" aria-labelledby="title desc">
+  <title id="title">Fathomark weight map for core, offensive, and tactical lenses</title>
+  <desc id="desc">Three one-hundred-percent stacked bars show how the same eleven factors are weighted. Core allocates 64 percent to fundamentals, 27 percent to growth and valuation, and 9 percent to market factors. Offensive allocates 37, 49, and 14 percent. Tactical allocates 13, 16, and 71 percent.</desc>
+  <rect width="1120" height="400" rx="24" fill="#0B172A"/>
+  <circle cx="1016" cy="-34" r="188" fill="#12374A" opacity=".68"/>
+  <g font-family="Inter, Arial, sans-serif">
+    <text x="56" y="58" fill="#F1D08A" font-size="13" font-weight="700" letter-spacing="2.3">COMMON-STOCK@1.0.0 / WEIGHT MAP</text>
+    <text x="56" y="101" fill="#F5F1E8" font-size="30" font-weight="700">Same evidence. Different emphasis.</text>
+    <text x="56" y="129" fill="#B9C8D4" font-size="15">Every bar totals 100%. The table below carries all 11 precise factor weights.</text>
+
+    <g transform="translate(56 158)" font-size="13" font-weight="700">
+      <rect width="12" height="12" rx="3" fill="#2F6F73"/><text x="20" y="11" fill="#B9C8D4">Fundamentals</text>
+      <rect x="160" width="12" height="12" rx="3" fill="#C9973E"/><text x="180" y="11" fill="#B9C8D4">Growth / valuation</text>
+      <rect x="370" width="12" height="12" rx="3" fill="#527185"/><text x="390" y="11" fill="#B9C8D4">Market</text>
+    </g>
+
+    <g transform="translate(56 206)">
+      <text y="-10" fill="#F5F1E8" font-size="15" font-weight="700" letter-spacing="1.4">CORE</text>
+      <rect width="1008" height="34" rx="7" fill="#17313A"/>
+      <path d="M7 0h638v34H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Z" fill="#2F6F73"/>
+      <rect x="645" width="272" height="34" fill="#C9973E"/>
+      <path d="M917 0h84a7 7 0 0 1 7 7v20a7 7 0 0 1-7 7h-84Z" fill="#527185"/>
+      <text x="286" y="22" fill="#F5F1E8" font-size="13" font-weight="700">Fundamentals 64%</text>
+      <text x="711" y="22" fill="#0B172A" font-size="13" font-weight="700">Growth / valuation 27%</text>
+      <text x="928" y="22" fill="#F5F1E8" font-size="12" font-weight="700">Market 9%</text>
+    </g>
+
+    <g transform="translate(56 274)">
+      <text y="-10" fill="#F5F1E8" font-size="15" font-weight="700" letter-spacing="1.4">OFFENSIVE</text>
+      <rect width="1008" height="34" rx="7" fill="#17313A"/>
+      <path d="M7 0h366v34H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Z" fill="#2F6F73"/>
+      <rect x="373" width="494" height="34" fill="#C9973E"/>
+      <path d="M867 0h134a7 7 0 0 1 7 7v20a7 7 0 0 1-7 7h-141Z" fill="#527185"/>
+      <text x="132" y="22" fill="#F5F1E8" font-size="13" font-weight="700">Fundamentals 37%</text>
+      <text x="530" y="22" fill="#0B172A" font-size="13" font-weight="700">Growth / valuation 49%</text>
+      <text x="898" y="22" fill="#F5F1E8" font-size="12" font-weight="700">Market 14%</text>
+    </g>
+
+    <g transform="translate(56 342)">
+      <text y="-10" fill="#F5F1E8" font-size="15" font-weight="700" letter-spacing="1.4">TACTICAL</text>
+      <rect width="1008" height="34" rx="7" fill="#17313A"/>
+      <path d="M7 0h124v34H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Z" fill="#2F6F73"/>
+      <rect x="131" width="161" height="34" fill="#C9973E"/>
+      <path d="M292 0h709a7 7 0 0 1 7 7v20a7 7 0 0 1-7 7H292Z" fill="#527185"/>
+      <text x="21" y="22" fill="#F5F1E8" font-size="12" font-weight="700">Fundamentals 13%</text>
+      <text x="151" y="22" fill="#0B172A" font-size="12" font-weight="700">Growth / valuation 16%</text>
+      <text x="573" y="22" fill="#F5F1E8" font-size="14" font-weight="700">Market 71%</text>
+    </g>
+  </g>
+</svg>
