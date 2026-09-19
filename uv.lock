@@ -156,7 +156,6 @@ dependencies = [
     { name = "fastapi" },
     { name = "fathomark-agents" },
     { name = "fathomark-core" },
-    { name = "fathomark-providers" },
     { name = "fathomark-storage" },
     { name = "httpx" },
 ]
@@ -166,7 +165,6 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "fathomark-agents", editable = "packages/agents" },
     { name = "fathomark-core", editable = "packages/core" },
-    { name = "fathomark-providers", editable = "packages/providers" },
     { name = "fathomark-storage", editable = "packages/storage" },
     { name = "httpx", specifier = ">=0.27" },
 ]

@@ -7,7 +7,6 @@ dependencies = [
     "fastapi>=0.115",
     "fathomark-agents",
     "fathomark-core",
-    "fathomark-providers",
     "fathomark-storage",
     "httpx>=0.27",
 ]
@@ -22,5 +21,4 @@ packages = ["src/fathomark_api"]
 [tool.uv.sources]
 fathomark-agents = { workspace = true }
 fathomark-core = { workspace = true }
-fathomark-providers = { workspace = true }
 fathomark-storage = { workspace = true }

@@ -165,5 +165,9 @@ class RunService:
 
     def resolve_review(self, run_id: str, reason: str, actor: str) -> None:
         self._require_state(run_id, RunState.NEEDS_REVIEW)
+        if self.repo.latest_snapshot(run_id) is None:
+            # needs_review from an agent failure has no draft to return to;
+            # the run must be re-executed instead of advancing blind.
+            raise StateConflict("run has no draft snapshot; re-execute instead")
         self.repo.record_decision(run_id, "resolve", None, None, None, reason, actor)
         self.repo.advance(run_id, RunState.DRAFT)

@@ -130,6 +130,7 @@ class Orchestrator:
         state = RunState(row.state)
         if state in _NON_EXECUTABLE:
             raise OrchestratorError(f"run {run_id} in terminal state {state}")
+        self._require_orchestrator_driven(run_id)
         if state == RunState.FAILED:
             # Re-entry point for failed runs; step records decide what re-runs.
             self.repo.advance(run_id, RunState.COLLECTING)
@@ -143,6 +144,21 @@ class Orchestrator:
                     return final
         self.repo.session.commit()
         return RunState(self.repo.get(run_id).state)
+
+    def _require_orchestrator_driven(self, run_id: str) -> None:
+        """Refuse runs driven via the ingest/compute endpoints: they carry DB
+        evidence/proposals but no collect step record, so execute() would
+        re-ingest and collide with manually persisted data."""
+        collect_done = any(
+            s.step == "collect" and s.status == "succeeded"
+            for s in self.repo.steps_of(run_id)
+        )
+        if collect_done:
+            return
+        if self.repo.evidence_of(run_id) or self.repo.proposals_of(run_id):
+            raise OrchestratorError(
+                "run was not orchestrator-driven; use ingest/compute endpoints"
+            )
 
     def _execute_step(self, run_id: str, step: StepSpec) -> RunState | None:
         """Run one step; return a terminal RunState if the run aborted."""
@@ -173,6 +189,7 @@ class Orchestrator:
                 self._ensure_state(run_id, step.exit_state)
         except AgentError as exc:
             self.repo.fail_step(run_id, step.name, str(exc))
+            self.repo.get(run_id).error = str(exc)
             self.repo.advance(run_id, RunState.NEEDS_REVIEW)
             return RunState.NEEDS_REVIEW
         except ProviderError as exc:

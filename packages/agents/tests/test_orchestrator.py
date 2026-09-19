@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from fathomark_agents import Orchestrator, OrchestratorError
 from fathomark_core import load_framework
+from fathomark_core.schemas import EvidenceItem, FactorProposal
 from fathomark_providers import (
     FakeLLMProvider,
     FixtureEvidenceProvider,
@@ -61,6 +62,7 @@ def test_agent_error_sends_run_to_needs_review_and_recovers(seeded_run):
     bad = FakeLLMProvider(["garbage", "garbage", "garbage"])
     assert _orchestrator(repo, bad).execute(run_id) == RunState.NEEDS_REVIEW
     assert repo.proposals_of(run_id) == []  # nothing fake persisted
+    assert repo.get(run_id).error  # reason recorded like failed runs
     good = ReplayLLMProvider(FIXTURE / "llm_cassette.json")
     assert _orchestrator(repo, good).execute(run_id) == RunState.DRAFT
 
@@ -79,3 +81,25 @@ def test_execute_on_terminal_run_raises(seeded_run):
     orch = _orchestrator(repo, ReplayLLMProvider(FIXTURE / "llm_cassette.json"))
     with pytest.raises(OrchestratorError):
         orch.execute(run_id)
+
+
+def test_execute_refuses_manually_driven_run(seeded_run):
+    """A run driven via the M2 ingest/compute endpoints has DB evidence and
+    proposals but no step records; execute() must refuse it explicitly rather
+    than re-ingesting and poisoning its state."""
+    repo, run_id = seeded_run
+    data = json.loads((FIXTURE / "input.json").read_text(encoding="utf-8"))
+    evidence = [EvidenceItem.model_validate(e) for e in data["evidence"]]
+    proposals = [FactorProposal.model_validate(p) for p in data["proposals"]]
+    repo.add_evidence(run_id, evidence)
+    repo.advance(run_id, RunState.COLLECTING)
+    repo.add_proposals(run_id, proposals)
+    repo.advance(run_id, RunState.ANALYZING)
+    repo.advance(run_id, RunState.DRAFT)
+    repo.session.commit()
+    orch = _orchestrator(repo, ReplayLLMProvider(FIXTURE / "llm_cassette.json"))
+    with pytest.raises(OrchestratorError, match="not orchestrator-driven"):
+        orch.execute(run_id)
+    # Run state untouched: still draft, no step records created.
+    assert RunState(repo.get(run_id).state) == RunState.DRAFT
+    assert repo.steps_of(run_id) == []

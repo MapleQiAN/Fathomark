@@ -50,6 +50,7 @@
 
 - [x] 使用固定 fixture 可以从 API 创建任务、审核并批准不可变版本。(packages/api/tests/test_e2e_adbe.py)
 - [x] Worker 中断后只恢复未完成步骤。(M3 切片：execute 重入 + step_runs 输入哈希实现步骤级恢复；异步 worker 进程仍在后续)
+  - [ ] 异步 worker 需要步骤边界逐条提交（当前 execute 整体一次提交）。
 - [x] 重复请求不会产生重复正式版本。(幂等键测试)
 
 ## 3. M3：美股 Provider 与专业 Agent

@@ -223,6 +223,19 @@ def test_resolve_review_records_decision(client):
     assert rows[0].actor == "reviewer-1"
 
 
+def test_resolve_review_without_snapshot_409(client):
+    """needs_review from an agent failure has no draft snapshot; resolving it
+    would land on a draft with nothing to review, so it must conflict."""
+    run_id = _run_to_collecting(client, "resolve-5")
+    _set_state(client, run_id, "needs_review")
+    r = client.post(
+        f"/v1/research-runs/{run_id}/resolve-review",
+        json={"reason": "无需补充", "actor": "reviewer-1"},
+    )
+    assert r.status_code == 409
+    assert client.get(f"/v1/research-runs/{run_id}").json()["state"] == "needs_review"
+
+
 def test_resolve_review_from_draft_409(client):
     run_id = run_to_draft(client, "resolve-3")
     r = client.post(
