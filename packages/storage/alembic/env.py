@@ -1,4 +1,8 @@
-"""Alembic environment. URL comes from sqlalchemy.url or FATHOMARK_DATABASE_URL."""
+"""Alembic environment.
+
+URL precedence: programmatic url_override (set by migrate_db) >
+FATHOMARK_DATABASE_URL env var (CLI usage) > ini sqlalchemy.url.
+"""
 
 import os
 from logging.config import fileConfig
@@ -12,9 +16,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-env_url = os.environ.get("FATHOMARK_DATABASE_URL")
-if env_url:
-    config.set_main_option("sqlalchemy.url", env_url)
+url_override = config.attributes.get("url_override")
+if url_override:
+    config.set_main_option("sqlalchemy.url", url_override)
+else:
+    env_url = os.environ.get("FATHOMARK_DATABASE_URL")
+    if env_url:
+        config.set_main_option("sqlalchemy.url", env_url)
 
 target_metadata = Base.metadata
 

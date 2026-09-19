@@ -64,3 +64,15 @@ def test_migration_is_idempotent(tmp_path):
     migrate_db(url)
 
     assert EXPECTED_TABLES | {"alembic_version"} == set(_schema(db))
+
+
+def test_migrate_db_argument_wins_over_env_var(tmp_path, monkeypatch):
+    """Explicit migrate_db(url) must not be hijacked by FATHOMARK_DATABASE_URL."""
+    env_db = tmp_path / "env.db"
+    monkeypatch.setenv("FATHOMARK_DATABASE_URL", f"sqlite:///{env_db}")
+
+    arg_db = tmp_path / "arg.db"
+    migrate_db(f"sqlite:///{arg_db}")
+
+    assert EXPECTED_TABLES | {"alembic_version"} == set(_schema(arg_db))
+    assert not env_db.exists()

@@ -27,4 +27,5 @@ def migrate_db(url: str) -> None:
     cfg = Config()
     cfg.set_main_option("script_location", str(_ALEMBIC_DIR))
     cfg.set_main_option("sqlalchemy.url", url)
+    cfg.attributes["url_override"] = url  # explicit arg beats FATHOMARK_DATABASE_URL
     command.upgrade(cfg, "head")
