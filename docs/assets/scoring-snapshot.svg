@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 360" role="img" aria-labelledby="title desc">
+  <title id="title">Fathomark offline golden-fixture score snapshot</title>
+  <desc id="desc">An illustrative ADBE fixture dashboard with a core-lens score of 85.75 and A plus, high evidence confidence, eleven evidence-backed factor proposals, a clear Veto check, and planned human review.</desc>
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#102A43"/>
+      <stop offset="1" stop-color="#0B172A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1120" height="360" rx="24" fill="#0B172A"/>
+  <rect x="24" y="24" width="1072" height="312" rx="18" fill="url(#surface)" stroke="#31556F"/>
+  <circle cx="972" cy="-12" r="196" fill="#12374A" opacity=".62"/>
+  <circle cx="1040" cy="342" r="154" fill="#102A43" opacity=".9"/>
+  <g font-family="Inter, Arial, sans-serif">
+    <text x="64" y="72" fill="#F1D08A" font-size="13" font-weight="700" letter-spacing="2.4">FATHOMARK / OFFLINE GOLDEN FIXTURE</text>
+    <text x="64" y="117" fill="#F5F1E8" font-size="31" font-weight="700">ADBE — reproducible score snapshot</text>
+    <text x="64" y="145" fill="#B9C8D4" font-size="15">Recorded fixture: adbe_2026-09-03 · illustrative, not a live rating</text>
+
+    <g transform="translate(64 182)">
+      <rect width="388" height="112" rx="14" fill="#12374A" stroke="#C9973E" stroke-width="1.5"/>
+      <text x="22" y="31" fill="#B9C8D4" font-size="13" font-weight="700" letter-spacing="1.3">CORE LENS</text>
+      <text x="22" y="83" fill="#F5F1E8" font-size="43" font-weight="700">85.75</text>
+      <text x="236" y="83" fill="#F1D08A" font-size="35" font-weight="700">/ A+</text>
+    </g>
+
+    <g transform="translate(476 182)">
+      <rect width="256" height="112" rx="14" fill="#153540" stroke="#31556F"/>
+      <text x="20" y="31" fill="#B9C8D4" font-size="13" font-weight="700" letter-spacing="1.1">EVIDENCE CONFIDENCE</text>
+      <text x="20" y="79" fill="#9CDBD3" font-size="31" font-weight="700">HIGH</text>
+    </g>
+
+    <g transform="translate(756 182)">
+      <rect width="300" height="112" rx="14" fill="#153540" stroke="#31556F"/>
+      <text x="20" y="31" fill="#B9C8D4" font-size="13" font-weight="700" letter-spacing="1.1">SCORING SAFEGUARDS</text>
+      <text x="20" y="62" fill="#F5F1E8" font-size="16" font-weight="700">11 evidence-backed factors</text>
+      <text x="20" y="88" fill="#9CDBD3" font-size="14" font-weight="700">Veto clear · planned human review required</text>
+    </g>
+
+    <path d="M64 318h992" stroke="#31556F" opacity=".72"/>
+    <text x="64" y="342" fill="#B9C8D4" font-size="13">Same structured input → same snapshot hash</text>
+  </g>
+</svg>
