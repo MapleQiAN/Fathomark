@@ -91,6 +91,24 @@ class ScoreSnapshotRow(Base):
     created_at: Mapped[datetime]
 
 
+class StepRunRow(Base):
+    __tablename__ = "step_runs"
+    __table_args__ = (UniqueConstraint("run_id", "step"),)
+
+    pk: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("research_runs.id"))
+    step: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(16))  # running | succeeded | failed
+    attempt: Mapped[int] = mapped_column(Integer)
+    provider_name: Mapped[str | None] = mapped_column(String(80))
+    provider_version: Mapped[str | None] = mapped_column(String(40))
+    input_hash: Mapped[str] = mapped_column(String(80))
+    output_json: Mapped[dict | None] = mapped_column(JSON)
+    error: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime]
+    finished_at: Mapped[datetime | None]
+
+
 class ResearchVersionRow(Base):
     __tablename__ = "research_versions"
 

@@ -15,6 +15,7 @@ from fathomark_storage.models import (
     ResearchRunRow,
     ResearchVersionRow,
     ScoreSnapshotRow,
+    StepRunRow,
 )
 from fathomark_storage.state_machine import RunState, transition
 
@@ -241,6 +242,68 @@ class RunRepository:
             )
         )
         self.session.flush()
+
+    def step_record(self, run_id: str, step: str) -> StepRunRow | None:
+        return self.session.scalar(
+            select(StepRunRow).where(
+                StepRunRow.run_id == run_id, StepRunRow.step == step
+            )
+        )
+
+    def begin_step(
+        self, run_id, step, input_hash, provider_name=None, provider_version=None
+    ) -> StepRunRow:
+        self.get(run_id)
+        rec = self.step_record(run_id, step)
+        now = datetime.now(UTC)
+        if rec is None:
+            rec = StepRunRow(
+                run_id=run_id,
+                step=step,
+                status="running",
+                attempt=1,
+                provider_name=provider_name,
+                provider_version=provider_version,
+                input_hash=input_hash,
+                output_json=None,
+                error=None,
+                started_at=now,
+                finished_at=None,
+            )
+            self.session.add(rec)
+        else:
+            rec.status = "running"
+            rec.attempt += 1
+            rec.provider_name = provider_name
+            rec.provider_version = provider_version
+            rec.input_hash = input_hash
+            rec.output_json = None
+            rec.error = None
+            rec.started_at = now
+            rec.finished_at = None
+        self.session.flush()
+        return rec
+
+    def finish_step(self, run_id: str, step: str, output: dict) -> None:
+        rec = self.step_record(run_id, step)
+        assert rec is not None and rec.status == "running"
+        rec.status = "succeeded"
+        rec.output_json = output
+        rec.finished_at = datetime.now(UTC)
+        self.session.flush()
+
+    def fail_step(self, run_id: str, step: str, error: str) -> None:
+        rec = self.step_record(run_id, step)
+        assert rec is not None and rec.status == "running"
+        rec.status = "failed"
+        rec.error = error
+        rec.finished_at = datetime.now(UTC)
+        self.session.flush()
+
+    def steps_of(self, run_id: str) -> list[StepRunRow]:
+        return list(
+            self.session.scalars(select(StepRunRow).where(StepRunRow.run_id == run_id))
+        )
 
     def find_version_by_idem(self, idem_key: str) -> ResearchVersionRow | None:
         return self.session.scalar(

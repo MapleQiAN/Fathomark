@@ -11,6 +11,7 @@ EXPECTED_TABLES = {
     "human_decisions",
     "score_snapshots",
     "research_versions",
+    "step_runs",
 }
 
 
@@ -54,7 +55,7 @@ def test_alembic_version_at_head(tmp_path):
         rows = conn.execute("SELECT version_num FROM alembic_version").fetchall()
     finally:
         conn.close()
-    assert rows == [("0001",)]
+    assert rows == [("0002",)]
 
 
 def test_migration_is_idempotent(tmp_path):
