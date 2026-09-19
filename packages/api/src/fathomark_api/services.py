@@ -5,7 +5,7 @@ from pathlib import Path
 from fathomark_core import evaluate, load_framework
 from fathomark_core.schemas import EvidenceItem, FactorProposal, ProposalError
 from fathomark_storage.repository import ConcurrencyError, RunRepository
-from fathomark_storage.state_machine import RunState
+from fathomark_storage.state_machine import TERMINAL_STATES, RunState
 
 
 class StateConflict(RuntimeError):
@@ -94,3 +94,29 @@ class RunService:
             run_id, "approve", None, None, None, f"approved by {actor}", actor
         )
         return version, True
+
+    def cancel(self, run_id: str) -> None:
+        row = self.repo.get(run_id)
+        if RunState(row.state) in TERMINAL_STATES:
+            raise StateConflict(f"run {run_id} already terminal ({row.state})")
+        self.repo.advance(run_id, RunState.CANCELLED)
+
+    def retry(self, run_id: str) -> None:
+        """Retry a failed run.
+
+        Idempotent-replay simplification: no retry-key storage. If the run has
+        already left ``failed`` into ``collecting``, we treat the request as a
+        replay and succeed without a state change; any other non-failed state
+        conflicts.
+        """
+        row = self.repo.get(run_id)
+        if RunState(row.state) == RunState.COLLECTING:
+            return
+        if RunState(row.state) != RunState.FAILED:
+            raise StateConflict(f"run {run_id} in state {row.state}")
+        self.repo.advance(run_id, RunState.COLLECTING)
+
+    def resolve_review(self, run_id: str, reason: str, actor: str) -> None:
+        self._require_state(run_id, RunState.NEEDS_REVIEW)
+        self.repo.record_decision(run_id, "resolve", None, None, None, reason, actor)
+        self.repo.advance(run_id, RunState.DRAFT)

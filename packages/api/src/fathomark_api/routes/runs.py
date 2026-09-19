@@ -16,6 +16,7 @@ from fathomark_api.schemas import (
     DecisionRequest,
     IngestEvidenceRequest,
     IngestProposalsRequest,
+    ResolveReviewRequest,
     ResultResponse,
     RunResponse,
     VersionResponse,
@@ -205,5 +206,46 @@ def approve(
         )
         response.status_code = 201 if created else 200
         return _version_response(version)
+
+    return _handle(service, op)
+
+
+@router.post("/research-runs/{run_id}/cancel")
+def cancel(run_id: str, request: Request):
+    service = _service(request)
+
+    def op():
+        service.cancel(run_id)
+        return _run_response(service.repo.get(run_id))
+
+    return _handle(service, op)
+
+
+@router.post("/research-runs/{run_id}/retry")
+def retry(
+    run_id: str,
+    request: Request,
+    idempotency_key: str | None = Header(default=None),
+):
+    if not idempotency_key:
+        return JSONResponse(
+            {"detail": "Idempotency-Key header required"}, status_code=400
+        )
+    service = _service(request)
+
+    def op():
+        service.retry(run_id)
+        return _run_response(service.repo.get(run_id))
+
+    return _handle(service, op)
+
+
+@router.post("/research-runs/{run_id}/resolve-review")
+def resolve_review(run_id: str, payload: ResolveReviewRequest, request: Request):
+    service = _service(request)
+
+    def op():
+        service.resolve_review(run_id, payload.reason, payload.actor)
+        return _run_response(service.repo.get(run_id))
 
     return _handle(service, op)

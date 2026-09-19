@@ -52,6 +52,11 @@ class ApproveRequest(BaseModel):
     expected_lock_version: int
 
 
+class ResolveReviewRequest(BaseModel):
+    reason: str = Field(min_length=1)
+    actor: str = Field(min_length=1)
+
+
 class VersionResponse(BaseModel):
     id: str
     run_id: str
