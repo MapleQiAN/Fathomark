@@ -121,7 +121,8 @@
 - [ ] 提供插件认证命令与契约测试模板。
 - [ ] 生成 SBOM 并加入依赖漏洞扫描。
 - [ ] 完成第一个公开版本的变更日志和发布检查。
-- [ ] 发布打包前将 httpx 提升为 fathomark-api 运行时依赖（webhook 发送器需要）。
+- [x] 发布打包前将 httpx 提升为 fathomark-api 运行时依赖（webhook 发送器需要）。
+- [ ] 验证 fathomark-storage wheel 内 alembic 目录在干净安装后可用（migrate_db 端到端）。
 
 ### M5 完成标准
 

@@ -12,5 +12,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/fathomark_storage"]
 
+# Ship migrations as package data so migrate_db works from an installed wheel.
+[tool.hatch.build.targets.wheel.force-include]
+"alembic" = "fathomark_storage/alembic"
+
 [tool.uv.sources]
 fathomark-core = { workspace = true }

@@ -27,3 +27,8 @@ testpaths = ["packages", "tests"]
 
 [tool.ruff]
 target-version = "py312"
+
+[tool.ruff.lint.per-file-ignores]
+# Naive datetimes are deliberate here: naive DateTime columns must roundtrip
+# without tz for equality checks against both backends.
+"packages/storage/tests/test_postgres.py" = ["DTZ001"]

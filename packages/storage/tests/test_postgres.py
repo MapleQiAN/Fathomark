@@ -40,7 +40,7 @@ EVIDENCE = EvidenceItem(
     data_period_end=SCOPE.data_cutoff,
     # Columns are naive DateTime on both backends; tzinfo would not survive
     # the roundtrip, so keep the fixture naive for equality checks.
-    accessed_at=datetime(2026, 9, 3),  # noqa: DTZ001
+    accessed_at=datetime(2026, 9, 3),
     grade="A",
     content_hash="sha256:" + "ab" * 32,
     excerpt="10-K filing excerpt",

@@ -9,7 +9,17 @@ from sqlalchemy.orm import sessionmaker
 
 from fathomark_storage.models import Base
 
-_ALEMBIC_DIR = Path(__file__).resolve().parents[2] / "alembic"
+
+def _alembic_dir() -> Path:
+    """Locate the bundled alembic directory.
+
+    Wheel installs ship it inside the package (force-include); editable/src
+    checkouts keep it at the package root next to ``src/``.
+    """
+    installed = Path(__file__).resolve().parent / "alembic"
+    if installed.is_dir():
+        return installed
+    return Path(__file__).resolve().parents[2] / "alembic"
 
 
 def create_session_factory(url: str) -> sessionmaker:
@@ -25,7 +35,7 @@ def init_db(session_factory: sessionmaker) -> None:
 def migrate_db(url: str) -> None:
     """Run `alembic upgrade head` programmatically against `url`."""
     cfg = Config()
-    cfg.set_main_option("script_location", str(_ALEMBIC_DIR))
+    cfg.set_main_option("script_location", str(_alembic_dir()))
     cfg.set_main_option("sqlalchemy.url", url)
     cfg.attributes["url_override"] = url  # explicit arg beats FATHOMARK_DATABASE_URL
     command.upgrade(cfg, "head")
