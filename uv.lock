@@ -133,6 +133,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "fathomark-core" },
     { name = "fathomark-storage" },
+    { name = "httpx" },
 ]
 
 [package.metadata]
@@ -140,6 +141,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "fathomark-core", editable = "packages/core" },
     { name = "fathomark-storage", editable = "packages/storage" },
+    { name = "httpx", specifier = ">=0.27" },
 ]
 
 [[package]]

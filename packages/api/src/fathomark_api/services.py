@@ -25,6 +25,21 @@ class RunService:
         self.repo = repo
         self.framework_dir = framework_dir
         self.dispatcher = dispatcher
+        self._pending_events: list[WebhookEvent] = []
+
+    def pending_events(self) -> list[WebhookEvent]:
+        """Return queued webhook events and clear the queue."""
+        events, self._pending_events = self._pending_events, []
+        return events
+
+    def dispatch_pending(self) -> None:
+        """Dispatch queued events; call only after a successful commit.
+
+        Events queued by a mutation that later rolls back are never
+        dispatched (the queue dies with the per-request service).
+        """
+        for event in self.pending_events():
+            notify(self.dispatcher, event)
 
     def _require_state(self, run_id: str, *states: RunState):
         row = self.repo.get(run_id)
@@ -92,33 +107,35 @@ class RunService:
                 run_id, "return", None, None, None, req.reason, req.actor
             )
             self.repo.advance(run_id, RunState.NEEDS_REVIEW)
-            notify(
-                self.dispatcher,
+            self._pending_events.append(
                 WebhookEvent(
                     event="needs_review",
                     run_id=run_id,
                     occurred_at=int(time.time()),
                     payload={"reason": req.reason, "actor": req.actor},
-                ),
+                )
             )
 
     def approve(self, run_id: str, expected_lock: int, idem_key: str, actor: str):
         replay = self.repo.find_version_by_idem(idem_key)
         if replay is not None:
+            if replay.run_id != run_id:
+                raise StateConflict(
+                    f"idempotency key {idem_key} already used by run {replay.run_id}"
+                )
             return replay, False
         self._require_state(run_id, RunState.DRAFT)
         version, _ = self.repo.create_version(run_id, idem_key, expected_lock)
         self.repo.record_decision(
             run_id, "approve", None, None, None, f"approved by {actor}", actor
         )
-        notify(
-            self.dispatcher,
+        self._pending_events.append(
             WebhookEvent(
                 event="approved",
                 run_id=run_id,
                 occurred_at=int(time.time()),
                 payload={"version_id": version.id, "actor": actor},
-            ),
+            )
         )
         return version, True
 

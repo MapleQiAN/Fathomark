@@ -60,11 +60,14 @@ def test_verify_wrong_secret_rejected():
 def test_dispatcher_sends_verifiable_signature():
     sent = []
     dispatcher = WebhookDispatcher(
-        "https://hooks.example.test/fm", "test-secret",
+        "https://hooks.example.test/fm",
+        "test-secret",
         lambda url, headers, body: sent.append((url, headers, body)),
     )
     event = WebhookEvent(
-        event="approved", run_id="run-1", occurred_at=1_700_000_000,
+        event="approved",
+        run_id="run-1",
+        occurred_at=1_700_000_000,
         payload={"version_id": "v1"},
     )
     dispatcher.dispatch(event)
@@ -76,9 +79,10 @@ def test_dispatcher_sends_verifiable_signature():
     ts = int(headers[TIMESTAMP_HEADER])
     assert verify(SECRET, headers[SIGNATURE_HEADER], ts, body) is True
     # Body is canonical JSON (sorted keys, tight separators)
-    assert body == json.dumps(
-        json.loads(body), separators=(",", ":"), sort_keys=True
-    ).encode()
+    assert (
+        body
+        == json.dumps(json.loads(body), separators=(",", ":"), sort_keys=True).encode()
+    )
     assert json.loads(body)["event"] == "approved"
 
 
@@ -91,7 +95,8 @@ def hooked_client(tmp_path):
         framework_dir=ROOT / "frameworks",
     )
     app.state.webhook_dispatcher = WebhookDispatcher(
-        "https://hooks.example.test/fm", "test-secret",
+        "https://hooks.example.test/fm",
+        "test-secret",
         lambda url, headers, body: deliveries.append((url, headers, body)),
     )
     with TestClient(app) as c:
@@ -117,9 +122,10 @@ def test_approve_fires_exactly_one_approved_event(hooked_client):
     assert events[0]["run_id"] == run_id
     # Headers carry a verifiable signature
     _, headers, body = deliveries[0]
-    assert verify(
-        SECRET, headers[SIGNATURE_HEADER], int(headers[TIMESTAMP_HEADER]), body
-    ) is True
+    assert (
+        verify(SECRET, headers[SIGNATURE_HEADER], int(headers[TIMESTAMP_HEADER]), body)
+        is True
+    )
 
     # Idempotent replay fires no second event
     r2 = client.post(
@@ -149,6 +155,19 @@ def test_review_return_fires_needs_review_event(hooked_client):
     assert [e["event"] for e in events] == ["needs_review"]
     assert events[0]["run_id"] == run_id
     assert events[0]["payload"]["reason"] == "缺少证据"
+
+
+def test_failed_mutation_delivers_no_events(hooked_client):
+    """A 409 (stale lock) rolls back before dispatch: zero phantom events."""
+    client, deliveries = hooked_client
+    run_id = run_to_draft(client, "wh-stale-1")
+    r = client.post(
+        f"/v1/research-runs/{run_id}/approve",
+        json={"expected_lock_version": 999},
+        headers={"Idempotency-Key": "wh-stale-1"},
+    )
+    assert r.status_code == 409
+    assert deliveries == []
 
 
 def test_sender_failure_does_not_break_mutation(tmp_path):

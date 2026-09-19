@@ -67,8 +67,21 @@ def _error(status: int, exc: Exception) -> JSONResponse:
     return JSONResponse({"detail": str(exc)}, status_code=status)
 
 
+def _require_idem_key(key: str | None) -> JSONResponse | None:
+    """400 guard for the Idempotency-Key header; None means the key is present."""
+    if not key:
+        return JSONResponse(
+            {"detail": "Idempotency-Key header required"}, status_code=400
+        )
+    return None
+
+
 def _handle(service: RunService, fn):
-    """Run a mutation; map domain errors to HTTP; commit or rollback."""
+    """Run a mutation; map domain errors to HTTP; commit then dispatch events.
+
+    Webhook events queued during the mutation are dispatched only after a
+    successful commit; a rollback discards them (no phantom events).
+    """
     try:
         result = fn()
     except LookupError as exc:
@@ -81,6 +94,7 @@ def _handle(service: RunService, fn):
         service.repo.session.rollback()
         return _error(422, exc)
     service.repo.session.commit()
+    service.dispatch_pending()
     return result
 
 
@@ -91,10 +105,9 @@ def create_run(
     response: Response,
     idempotency_key: str | None = Header(default=None),
 ):
-    if not idempotency_key:
-        return JSONResponse(
-            {"detail": "Idempotency-Key header required"}, status_code=400
-        )
+    guard = _require_idem_key(idempotency_key)
+    if guard is not None:
+        return guard
     service = _service(request)
     row, created = service.repo.create_run(
         idem_key=idempotency_key, scope=ScopeSnapshot(**payload.model_dump())
@@ -198,10 +211,9 @@ def approve(
     idempotency_key: str | None = Header(default=None),
     actor: str = Header(default="unknown"),
 ):
-    if not idempotency_key:
-        return JSONResponse(
-            {"detail": "Idempotency-Key header required"}, status_code=400
-        )
+    guard = _require_idem_key(idempotency_key)
+    if guard is not None:
+        return guard
     service = _service(request)
 
     def op():
@@ -231,10 +243,9 @@ def retry(
     request: Request,
     idempotency_key: str | None = Header(default=None),
 ):
-    if not idempotency_key:
-        return JSONResponse(
-            {"detail": "Idempotency-Key header required"}, status_code=400
-        )
+    guard = _require_idem_key(idempotency_key)
+    if guard is not None:
+        return guard
     service = _service(request)
 
     def op():

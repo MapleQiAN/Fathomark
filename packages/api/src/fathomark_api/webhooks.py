@@ -16,6 +16,7 @@ import time
 from collections.abc import Callable
 from typing import Literal
 
+import httpx
 from pydantic import BaseModel
 
 logger = logging.getLogger("fathomark_api.webhooks")
@@ -27,9 +28,7 @@ DEFAULT_TOLERANCE = 300
 
 def sign(secret: bytes, timestamp: int, body: bytes) -> str:
     """HMAC-SHA256 hex digest over ``f"{timestamp}.".encode() + body``."""
-    return hmac.new(
-        secret, f"{timestamp}.".encode() + body, hashlib.sha256
-    ).hexdigest()
+    return hmac.new(secret, f"{timestamp}.".encode() + body, hashlib.sha256).hexdigest()
 
 
 def verify(
@@ -71,8 +70,6 @@ Sender = Callable[[str, dict, bytes], None]
 
 def httpx_sender(url: str, headers: dict, body: bytes) -> None:
     """Default sender: synchronous POST via httpx."""
-    import httpx
-
     httpx.post(url, headers=headers, content=body, timeout=10.0)
 
 

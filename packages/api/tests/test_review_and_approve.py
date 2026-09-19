@@ -117,6 +117,34 @@ def test_approve_stale_lock_409(client):
     assert r.status_code == 409
 
 
+def test_approve_replay_scoped_to_run(client):
+    """A replay hit for another run's key is a conflict, not a cross-run replay."""
+    run_a = run_to_draft(client, "app-5a")
+    run_b = run_to_draft(client, "app-5b")
+    r1 = client.post(
+        f"/v1/research-runs/{run_a}/approve",
+        json={"expected_lock_version": _lock(client, run_a)},
+        headers={"Idempotency-Key": "app-5"},
+    )
+    assert r1.status_code == 201
+
+    r2 = client.post(
+        f"/v1/research-runs/{run_b}/approve",
+        json={"expected_lock_version": _lock(client, run_b)},
+        headers={"Idempotency-Key": "app-5"},
+    )
+    assert r2.status_code == 409
+    assert client.get(f"/v1/research-runs/{run_b}").json()["state"] == "draft"
+
+    r3 = client.post(
+        f"/v1/research-runs/{run_a}/approve",
+        json={"expected_lock_version": _lock(client, run_a)},
+        headers={"Idempotency-Key": "app-5"},
+    )
+    assert r3.status_code == 200
+    assert r3.json()["id"] == r1.json()["id"]
+
+
 def test_approve_wrong_state_409(client):
     from conftest import create_run
 
