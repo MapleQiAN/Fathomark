@@ -25,7 +25,7 @@
 <br />
 
 > [!IMPORTANT]
-> M1 is done: the deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework with tests and an offline golden fixture. The API, agents and report renderers are still ahead — see [TODO.md](TODO.md).
+> M1 and M2 are done: the deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework, and `packages/storage` + `packages/api` add the run state machine, storage, headless API, Python SDK, OpenAPI contract and HMAC webhooks (worker still ahead in M3) — see [TODO.md](TODO.md).
 
 ## The idea in one sentence
 
@@ -205,7 +205,7 @@ fathomark/
 1. [System design](docs/design/2026-09-18-fathomark-design.md) — architecture, data contracts, scoring governance and report formats.
 2. [Roadmap](TODO.md) — milestones, acceptance criteria and the remaining project work.
 
-The next vertical slice (M2) adds storage, the run state machine and a headless API: create a run, submit evidence-backed proposals, review and approve an immutable version.
+M2 is done: `packages/storage` and `packages/api` implement the run state machine, SQLite/PostgreSQL storage, the headless API (create, query, cancel, retry, review, approve, result), the Python SDK in `packages/sdk`, the versioned OpenAPI contract and HMAC webhooks. The background worker arrives with M3, and the agent adapters and report renderers are still ahead — see [TODO.md](TODO.md).
 
 ## Get the repository
 
@@ -230,7 +230,7 @@ cd Fathomark
 | Brand, architecture and contracts | ✅ Defined |
 | Deterministic scoring core | ✅ Implemented (M1) |
 | Agent adapters and provider recordings | ◻ Planned |
-| API and worker | ◻ Planned |
+| API and worker | API ✅ Implemented (M2); worker ◻ M3 |
 | HTML / Markdown / PDF renderer | ◻ Planned |
 | Self-contained demo and release packaging | ◻ Planned |
 

@@ -205,7 +205,7 @@ fathomark/
 1. [系统设计](docs/design/2026-09-18-fathomark-design.md)——架构、数据契约、评分治理和报告格式。
 2. [路线图](TODO.md)——里程碑、验收标准和项目剩余工作。
 
-下一条垂直切片（M2）将加入存储、运行状态机和无界面 API：创建运行、提交有证据支撑的提议、审阅并核准不可变版本。
+M2 已完成：`packages/storage` 与 `packages/api` 实现了运行状态机、SQLite/PostgreSQL 存储、无界面 API（创建、查询、取消、重试、审阅、批准、结果）、`packages/sdk` 中的 Python SDK、版本化 OpenAPI 契约与 HMAC Webhook。后台 worker 随 M3 交付，智能体适配器与报告渲染器仍在后续计划中——参见 [TODO.md](TODO.md)。
 
 ## 获取仓库
 

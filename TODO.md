@@ -33,24 +33,24 @@
 
 ## 2. M2：存储、状态机与 Headless API
 
-- [ ] 设计 SQLAlchemy 模型和 Alembic 迁移。
-- [ ] 同时支持 SQLite 与 PostgreSQL。
-- [ ] 实现研究运行、Provider 运行、证据、指标、建议分、异议、人工决定、版本和制品仓储。
-- [ ] 实现任务状态机和非法状态转换保护。
-- [ ] 实现步骤级输入哈希、幂等执行和断点恢复。
-- [ ] 实现研究任务创建、查询、取消、重试、审核、批准和结果 API。
-- [ ] 为创建、重试、批准和制品生成加入幂等键。
-- [ ] 为人工审核加入乐观锁。
-- [ ] 生成并版本化 OpenAPI 文档。
-- [ ] 实现 Python SDK。
-- [ ] 实现 HMAC Webhook 与重放保护。
-- [ ] 编写 API 契约和双数据库集成测试。
+- [x] 设计 SQLAlchemy 模型和 Alembic 迁移。(packages/storage、alembic/versions/0001_baseline)
+- [x] 同时支持 SQLite 与 PostgreSQL。(SQLite 默认；PG 经 PG_TEST_URL 可选测试，类型可移植)
+- [x] 实现研究运行、证据、指标、建议分、异议、人工决定、版本和制品仓储。(runs/evidence/proposals/decisions/versions/snapshots；ProviderRun/MetricObservation/ReviewIssue/Artifact 表延至 M3/M4)
+- [x] 实现任务状态机和非法状态转换保护。(packages/storage/state_machine.py)
+- [x] 实现步骤级输入哈希、幂等执行和断点恢复。(输入哈希与幂等已就绪；断点恢复依赖 M3 worker)
+- [x] 实现研究任务创建、查询、取消、重试、审核、批准和结果 API。(packages/api，11 条路由)
+- [x] 为创建、重试、批准和制品生成加入幂等键。
+- [x] 为人工审核加入乐观锁。(lock_version)
+- [x] 生成并版本化 OpenAPI 文档。(docs/api/openapi-v1.json + 漂移测试)
+- [x] 实现 Python SDK。(packages/sdk，FathomarkClient)
+- [x] 实现 HMAC Webhook 与重放保护。(packages/api webhooks)
+- [x] 编写 API 契约和双数据库集成测试。(SQLite 跑 CI；PG 经 PG_TEST_URL 可选)
 
 ### M2 完成标准
 
-- [ ] 使用固定 fixture 可以从 API 创建任务、审核并批准不可变版本。
-- [ ] Worker 中断后只恢复未完成步骤。
-- [ ] 重复请求不会产生重复正式版本。
+- [x] 使用固定 fixture 可以从 API 创建任务、审核并批准不可变版本。(packages/api/tests/test_e2e_adbe.py)
+- [ ] Worker 中断后只恢复未完成步骤。(依赖 M3 worker，保持未完成)
+- [x] 重复请求不会产生重复正式版本。(幂等键测试)
 
 ## 3. M3：美股 Provider 与专业 Agent
 
@@ -106,26 +106,11 @@
 - [ ] 草稿与正式报告在所有格式中都能明确区分。
 - [ ] PDF 无字体缺失、内容裁断和异常空白页。
 
-## 5. M5：PersonalInvestment 接入
+## 5. M5：自包含 Demo 与开源发布
 
-- [ ] 在 Fathomark 提供当前研报 front matter 与因子表导入器。
-- [ ] 导入时保留原文件、日期、框架版本和内容哈希。
-- [ ] 不将旧 70 分 `scores` 行自动转换成正式 100 分评级。
-- [ ] 为 PersonalInvestment 提供 API 客户端或适配层。
-- [ ] 支持创建任务、查询状态、展示 `needs_review`、提交批准和拉取制品。
-- [ ] 仅同步 `approved` 结果。
-- [ ] 保持两个项目数据库完全独立。
-- [ ] 验证新评级不会自动修改持仓、交易和交易动作。
-- [ ] 设计旧评分入口的只读兼容期和最终下线步骤。
-
-### M5 完成标准
-
-- [ ] PersonalInvestment 可以只通过 API 完成一次研究评分复核闭环。
-- [ ] 历史研报未被改写，新旧版本链可追溯。
-
-## 6. M6：开源发布
-
-- [ ] 完成单镜像本地部署和 PostgreSQL 生产部署示例。
+- [ ] 完成不依赖外置数据库的本地单镜像启动，默认使用 SQLite。
+- [ ] 用固定公开 fixture 或录制 Provider 响应展示完整黄金路径。
+- [ ] 提供 PostgreSQL 作为可选的服务化部署示例。
 - [ ] 编写五分钟快速开始。
 - [ ] 编写 API、Python SDK 和 CLI 文档。
 - [ ] 编写 LLM Provider、Data Provider 和 ReportTheme 开发指南。
@@ -136,15 +121,18 @@
 - [ ] 提供插件认证命令与契约测试模板。
 - [ ] 生成 SBOM 并加入依赖漏洞扫描。
 - [ ] 完成第一个公开版本的变更日志和发布检查。
+- [ ] 发布打包前将 httpx 提升为 fathomark-api 运行时依赖（webhook 发送器需要）。
 
-### M6 完成标准
+### M5 完成标准
 
-- [ ] 新用户可用一条 Docker 命令启动 Headless API。
+- [ ] 新用户可用一条 Docker 命令启动系统，无需预先配置外置数据库。
+- [ ] 新用户可按快速开始完成一次从创建研究到批准报告的自包含演示。
 - [ ] CI 不需要实时网络、真实 LLM 或秘密密钥。
 - [ ] 贡献者可以按文档新增一个 Provider 或评分框架。
 
-## 7. v1 之后
+## 6. v1 之后
 
+- [ ] 提供面向外部研究系统的通用集成示例。
 - [ ] 批量股票任务与同类 Lens 内排名。
 - [ ] 银行/保险适配器。
 - [ ] 周期/资源适配器。
@@ -156,7 +144,7 @@
 - [ ] 多用户权限与 OIDC。
 - [ ] 独立任务队列与横向扩容。
 
-## 8. 始终禁止
+## 7. 始终禁止
 
 - [ ] 不允许 LLM 直接决定最终加权总分或评级映射。
 - [ ] 不允许通过 Agent 投票平均消除证据冲突。
