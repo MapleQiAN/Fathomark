@@ -109,7 +109,7 @@ Write four short, numbered paragraphs with these headings and exact semantic com
 ```markdown
 1. Set the frame — one ordinary listed operating company, cutoff date, `common-stock@1.0.0` framework version.
 2. Ground every factor — dated, source-linked evidence and counter-evidence support one 0–10 proposal for each of 11 factors; declared gaps are not smoothed away.
-3. Calculate, then constrain — a selected lens deterministically weights proposals to 100 points and maps a grade; Veto and NR override the total.
+3. Calculate, then constrain — a selected lens deterministically weights proposals to 100 points and maps a grade; a triggered Veto yields `X`, and `NR` overrides the total when confidence is insufficient.
 4. Review before release (planned workflow) — human approval/immutable release is a design commitment, not a running service claim.
 ```
 
