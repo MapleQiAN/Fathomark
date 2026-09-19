@@ -232,7 +232,7 @@ cd Fathomark
 | 智能体适配器与供应商记录 | ◻ 计划中 |
 | API 与工作器 | ◻ 计划中 |
 | HTML / Markdown / PDF 渲染器 | ◻ 计划中 |
-| PersonalInvestment 适配器 | ◻ 计划中 |
+| 自包含 Demo 与发布打包 | ◻ 计划中 |
 
 M1 评分核心已实现：`packages/core` 承载 `common-stock@1.0.0` 框架的确定性评分、Veto 与评级映射。
 离线可复现：`examples/fixtures/adbe_2026-09-03` 金样测试证明同一 JSON 输入永远得到同一快照（ADBE 核心 85.75 / A+）。
