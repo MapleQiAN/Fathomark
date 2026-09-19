@@ -135,6 +135,18 @@ dev = [
 name = "fathomark-agents"
 version = "0.1.0"
 source = { editable = "packages/agents" }
+dependencies = [
+    { name = "fathomark-core" },
+    { name = "fathomark-providers" },
+    { name = "fathomark-storage" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fathomark-core", editable = "packages/core" },
+    { name = "fathomark-providers", editable = "packages/providers" },
+    { name = "fathomark-storage", editable = "packages/storage" },
+]
 
 [[package]]
 name = "fathomark-api"
