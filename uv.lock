@@ -5,8 +5,10 @@ requires-python = ">=3.12"
 [manifest]
 members = [
     "fathomark",
+    "fathomark-agents",
     "fathomark-api",
     "fathomark-core",
+    "fathomark-providers",
     "fathomark-sdk",
     "fathomark-storage",
 ]
@@ -95,8 +97,10 @@ name = "fathomark"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "fathomark-agents" },
     { name = "fathomark-api" },
     { name = "fathomark-core" },
+    { name = "fathomark-providers" },
     { name = "fathomark-sdk" },
     { name = "fathomark-storage" },
 ]
@@ -111,8 +115,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fathomark-agents", editable = "packages/agents" },
     { name = "fathomark-api", editable = "packages/api" },
     { name = "fathomark-core", editable = "packages/core" },
+    { name = "fathomark-providers", editable = "packages/providers" },
     { name = "fathomark-sdk", editable = "packages/sdk" },
     { name = "fathomark-storage", editable = "packages/storage" },
 ]
@@ -124,6 +130,11 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "ruff", specifier = ">=0.6" },
 ]
+
+[[package]]
+name = "fathomark-agents"
+version = "0.1.0"
+source = { editable = "packages/agents" }
 
 [[package]]
 name = "fathomark-api"
@@ -158,6 +169,17 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
+
+[[package]]
+name = "fathomark-providers"
+version = "0.1.0"
+source = { editable = "packages/providers" }
+dependencies = [
+    { name = "fathomark-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "fathomark-core", editable = "packages/core" }]
 
 [[package]]
 name = "fathomark-sdk"

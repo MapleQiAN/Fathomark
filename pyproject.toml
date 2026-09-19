@@ -3,13 +3,15 @@ name = "fathomark"
 version = "0.1.0"
 description = "Fathomark 渊衡 — evidence-driven multi-agent equity scoring"
 requires-python = ">=3.12"
-dependencies = ["fathomark-core", "fathomark-storage", "fathomark-api", "fathomark-sdk"]
+dependencies = ["fathomark-core", "fathomark-storage", "fathomark-api", "fathomark-sdk", "fathomark-providers", "fathomark-agents"]
 
 [tool.uv.sources]
 fathomark-core = { workspace = true }
 fathomark-storage = { workspace = true }
 fathomark-api = { workspace = true }
 fathomark-sdk = { workspace = true }
+fathomark-providers = { workspace = true }
+fathomark-agents = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]
