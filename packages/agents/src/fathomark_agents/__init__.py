@@ -2,7 +2,6 @@
 
 from fathomark_agents.contracts import AgentError
 from fathomark_agents.financial_agent import FinancialAgent
-from fathomark_agents.fixture_agent import FixtureReplayAgent
 from fathomark_agents.orchestrator import (
     Orchestrator,
     OrchestratorError,
@@ -24,7 +23,6 @@ __all__ = [
     "AgentError",
     "BusinessAgent",
     "FinancialAgent",
-    "FixtureReplayAgent",
     "GovernanceRiskAgent",
     "GrowthAgent",
     "MarketAgent",

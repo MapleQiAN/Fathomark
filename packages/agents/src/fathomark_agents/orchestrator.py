@@ -1,6 +1,6 @@
 """Orchestrator: DAG-ready step execution with step records and resume.
 
-Step graph is linear today (scope → collect → {financial, stub} → compute)
+Step graph is linear today (scope → collect → six specialist agents → compute)
 but expressed as StepSpec(depends_on=...) and executed via topological
 levels, so same-level steps may run concurrently later without a contract
 change. Failure semantics per design §14: provider failures → failed with
@@ -13,7 +13,6 @@ import json
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
 
 from fathomark_core import evaluate
 from fathomark_core.framework import Framework
@@ -28,9 +27,15 @@ from fathomark_storage.repository import RunRepository
 from fathomark_storage.state_machine import TRANSITIONS, RunState
 
 from fathomark_agents.contracts import AgentError
-from fathomark_agents.financial_agent import FINANCIAL_FACTORS, FinancialAgent
-from fathomark_agents.fixture_agent import FixtureReplayAgent
+from fathomark_agents.financial_agent import FinancialAgent
 from fathomark_agents.scope_agent import ScopeAgent
+from fathomark_agents.specialists import (
+    BusinessAgent,
+    GovernanceRiskAgent,
+    GrowthAgent,
+    MarketAgent,
+    ValuationAgent,
+)
 
 
 class OrchestratorError(RuntimeError):
@@ -53,6 +58,16 @@ _ORDER = [
 _NON_EXECUTABLE = frozenset(
     {RunState.APPROVED, RunState.CANCELLED, RunState.SUPERSEDED}
 )
+
+_AGENT_SPECS = (
+    ("financial", FinancialAgent),
+    ("business", BusinessAgent),
+    ("growth", GrowthAgent),
+    ("valuation", ValuationAgent),
+    ("governance_risk", GovernanceRiskAgent),
+    ("market", MarketAgent),
+)
+_AGENT_STEP_NAMES = frozenset(name for name, _ in _AGENT_SPECS)
 
 
 def _hash_payload(payload) -> str:
@@ -116,14 +131,12 @@ class Orchestrator:
         *,
         llm: LLMProvider,
         evidence_providers: list[EvidenceProvider],
-        stub_path: Path,
         max_llm_calls: int = 32,
     ):
         self.repo = repo
         self.framework = framework
         self.llm = _BudgetedLLM(llm, max_llm_calls)
         self.evidence_providers = list(evidence_providers)
-        self.stub_path = Path(stub_path)
 
     def execute(self, run_id: str) -> RunState:
         row = self.repo.get(run_id)
@@ -236,10 +249,8 @@ class Orchestrator:
                 ",".join(p.name for p in self.evidence_providers) or None,
                 ",".join(p.version for p in self.evidence_providers) or None,
             )
-        if step_name == "financial":
+        if step_name in _AGENT_STEP_NAMES:
             return self.llm.name, self.llm.version
-        if step_name == "stub":
-            return FixtureReplayAgent.name, FixtureReplayAgent.version
         return None, None
 
     def _step_input_hash(self, run_id: str, step_name: str) -> str:
@@ -254,7 +265,7 @@ class Orchestrator:
                     for p in self.evidence_providers
                 ],
             }
-        elif step_name in ("financial", "stub"):
+        elif step_name in _AGENT_STEP_NAMES:
             payload = {"scope": scope, "evidence": self._evidence_index(run_id)}
         elif step_name == "compute":
             payload = {
@@ -316,24 +327,17 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
             "dropped": len(fetched) - len(usable),
         }
 
-    def financial_step() -> dict:
-        proposals = FinancialAgent(orch.llm).run(
-            scope=repo.scope_of(run_id),
-            framework=orch.framework,
-            evidence=repo.evidence_of(run_id),
-        )
-        repo.add_proposals(run_id, proposals, origin="agent")
-        return {"factors": sorted(p.factor for p in proposals)}
+    def make_agent_step(agent_cls) -> Callable[[], dict]:
+        def agent_step() -> dict:
+            proposals = agent_cls(orch.llm).run(
+                scope=repo.scope_of(run_id),
+                framework=orch.framework,
+                evidence=repo.evidence_of(run_id),
+            )
+            repo.add_proposals(run_id, proposals, origin="agent")
+            return {"factors": sorted(p.factor for p in proposals)}
 
-    def stub_step() -> dict:
-        factors = tuple(f for f in orch.framework.factors if f not in FINANCIAL_FACTORS)
-        proposals = FixtureReplayAgent(orch.stub_path, factors=factors).run(
-            scope=repo.scope_of(run_id),
-            framework=orch.framework,
-            evidence=repo.evidence_of(run_id),
-        )
-        repo.add_proposals(run_id, proposals, origin="fixture")
-        return {"factors": sorted(p.factor for p in proposals)}
+        return agent_step
 
     def compute_step() -> dict:
         snapshot = evaluate(
@@ -350,11 +354,13 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
         StepSpec(
             "collect", ("scope",), RunState.SCOPED, RunState.COLLECTING, collect_step
         ),
-        StepSpec("financial", ("collect",), RunState.ANALYZING, None, financial_step),
-        StepSpec("stub", ("collect",), RunState.ANALYZING, None, stub_step),
+        *(
+            StepSpec(name, ("collect",), RunState.ANALYZING, None, make_agent_step(cls))
+            for name, cls in _AGENT_SPECS
+        ),
         StepSpec(
             "compute",
-            ("financial", "stub"),
+            tuple(name for name, _ in _AGENT_SPECS),
             RunState.ANALYZING,
             RunState.DRAFT,
             compute_step,
