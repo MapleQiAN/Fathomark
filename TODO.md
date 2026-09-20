@@ -64,13 +64,13 @@
 - [ ] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。
 - [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。
 - [x] 实现 Scope Agent。(packages/agents ScopeAgent)
-- [ ] 实现 Business Agent。
+- [x] 实现 Business Agent。(BusinessAgent：business_moat，cassette 回放)
 - [x] 实现 Financial Agent。(financial_health + earnings_quality，录制 cassette 回放)
-  - 注：其余 9 个因子暂由 FixtureReplayAgent 从录制夹具回放（origin="fixture"），待对应真实 Agent 落地后逐个替换。
-- [ ] 实现 Growth Agent。
-- [ ] 实现 Valuation Agent。
-- [ ] 实现 Governance & Risk Agent。
-- [ ] 实现 Market Agent。
+  - 注：全部 11 个因子由真实 Agent 覆盖（离线 cassette 回放）；FixtureReplayAgent 已删除。cassette 由 `scripts/build_cassette.py` 确定性重建。
+- [x] 实现 Growth Agent。(GrowthAgent：growth_sustainability)
+- [x] 实现 Valuation Agent。(ValuationAgent：valuation)
+- [x] 实现 Governance & Risk Agent。(GovernanceRiskAgent：governance + policy_risk；Veto 候选随 Red-Team 后续)
+- [x] 实现 Market Agent。(MarketAgent：trend/liquidity/volatility/catalyst)
 - [ ] 实现 Red-Team Agent。
 - [x] 实现 Agent 输出结构修复与最多两次重试。(complete_with_repairs：1 次初始 + 至多 2 次修复)
 - [ ] 实现证据冲突、数据截止日、数据新鲜度和 NR 规则。
@@ -81,8 +81,8 @@
 ### M3 完成标准
 
 - [ ] 对一个公开美股样例可以生成包含完整证据引用的草稿。
-- [ ] 任一必需 Provider 失败时，系统显式失败或进入 `needs_review`。
-- [ ] Agent 无法引用不存在或超出截止日的证据。
+- [x] 任一必需 Provider 失败时，系统显式失败或进入 `needs_review`。(orchestrator 契约测试覆盖)
+- [x] Agent 无法引用不存在或超出截止日的证据。(validate_proposal 契约测试覆盖)
 
 ## 4. M4：审核与多格式报告
 
