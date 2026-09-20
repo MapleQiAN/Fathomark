@@ -27,7 +27,6 @@ def client(tmp_path):
             evidence_providers=[
                 FixtureEvidenceProvider(fixture / "provider_dump.json")
             ],
-            stub_path=fixture / "stub_proposals.json",
         )
 
     app = create_app(
