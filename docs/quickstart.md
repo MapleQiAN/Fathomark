@@ -31,6 +31,32 @@ curl -X POST http://localhost:8000/v1/research-runs \
   }'
 ```
 
+The Compose service enables the recorded, offline ADBE fixture so the same
+container can complete the full create → execute → approve path.  Copy the
+run ID from the create response, then execute it:
+
+```bash
+RUN_ID='<run-id from the create response>'
+curl -X POST "http://localhost:8000/v1/research-runs/${RUN_ID}/execute"
+```
+
+Read the optimistic-lock version and approve the immutable result:
+
+```bash
+LOCK_VERSION=$(curl -s "http://localhost:8000/v1/research-runs/${RUN_ID}" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["lock_version"])')
+curl -X POST "http://localhost:8000/v1/research-runs/${RUN_ID}/approve" \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: quickstart-approve-1' \
+  -d "{\"expected_lock_version\": ${LOCK_VERSION}}"
+curl "http://localhost:8000/v1/research-runs/${RUN_ID}/result"
+```
+
+This fixture mode is deterministic and does not call an external provider.  To
+run a deployment without the fixture, remove `FATHOMARK_DEMO_FIXTURE_DIR` from
+Compose; `/execute` then remains disabled until a provider/orchestrator is
+configured explicitly.
+
 The named `fathomark-data` volume keeps `/data/fathomark.sqlite3` after the
 container is recreated. Stop the API with `Ctrl-C`; `docker compose down`
 stops containers while preserving the named volume.
@@ -41,6 +67,6 @@ For a custom database URL, set it explicitly before starting the service:
 DATABASE_URL='sqlite:////absolute/path/fathomark.sqlite3' docker compose up --build
 ```
 
-The default image exposes the headless API and health endpoint. Provider keys,
-live collection, and the complete fixture-to-approved golden path are explicit
-follow-up configuration rather than hidden startup side effects.
+The image exposes the headless API and health endpoint. Provider keys and live
+collection remain explicit deployment configuration rather than hidden startup
+side effects.
