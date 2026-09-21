@@ -60,7 +60,7 @@
 - [x] 实现 Anthropic Provider。(标准库 HTTP 适配器；离线契约测试，真实密钥/网络由部署方提供)
 - [x] 实现 OpenAI-compatible Provider。(可配置 endpoint；支持无密钥本地服务)
 - [x] 实现 SEC EDGAR/XBRL Provider。（10-K/10-Q 证据采集；companyfacts 中收入、净利润、经营现金流的可追溯 USD 单期指标。）
-- [ ] 实现公司 IR 文档 Provider。
+- [x] 实现公司 IR 文档 Provider。(CompanyIREvidenceProvider：显式文档元数据 + HTTPS host allowlist + redirect guard)
 - [ ] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。
 - [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。（证据截止日过滤、内容去重、冲突 ID 拒绝，以及 SEC XBRL USD 指标的日期/单位/币种标准化已实现；通用多币种和非 XBRL 口径仍待补。）
 - [x] 实现 Scope Agent。(packages/agents ScopeAgent)
@@ -80,7 +80,7 @@
 
 ### M3 完成标准
 
-- [ ] 对一个公开美股样例可以生成包含完整证据引用的草稿。
+- [x] 对一个公开美股样例可以生成包含完整证据引用的草稿。(ADBE 录制 Provider/LLM cassette；实时 Provider 仍由部署方配置)
 - [x] 任一必需 Provider 失败时，系统显式失败或进入 `needs_review`。(orchestrator 契约测试覆盖)
 - [x] Agent 无法引用不存在或超出截止日的证据。(validate_proposal 契约测试覆盖)
 
