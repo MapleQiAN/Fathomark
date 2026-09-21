@@ -56,9 +56,9 @@
 ## 3. M3：美股 Provider 与专业 Agent
 
 - [x] 实现 LLM Provider 通用协议。(packages/providers：LLMProvider/LLMRequest/LLMResponse/ProviderError)
-- [ ] 实现 OpenAI Provider。
-- [ ] 实现 Anthropic Provider。
-- [ ] 实现 OpenAI-compatible Provider。
+- [x] 实现 OpenAI Provider。(标准库 HTTP 适配器；离线契约测试，真实密钥/网络由部署方提供)
+- [x] 实现 Anthropic Provider。(标准库 HTTP 适配器；离线契约测试，真实密钥/网络由部署方提供)
+- [x] 实现 OpenAI-compatible Provider。(可配置 endpoint；支持无密钥本地服务)
 - [x] 实现 SEC EDGAR/XBRL Provider。（10-K/10-Q 证据采集；companyfacts 中收入、净利润、经营现金流的可追溯 USD 单期指标。）
 - [ ] 实现公司 IR 文档 Provider。
 - [ ] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。

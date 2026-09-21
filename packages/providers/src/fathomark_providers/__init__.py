@@ -24,19 +24,29 @@ from fathomark_providers.llm import (
     ProviderError,
     prompt_key,
 )
+from fathomark_providers.remote_llm import (
+    AnthropicProvider,
+    JsonHttpTransport,
+    OpenAICompatibleProvider,
+    OpenAIProvider,
+)
 
 __all__ = [
+    "AnthropicProvider",
     "EvidenceNormalizationError",
     "EvidenceNormalizationResult",
     "EvidenceNormalizer",
     "EvidenceProvider",
     "FakeLLMProvider",
     "FixtureEvidenceProvider",
+    "JsonHttpTransport",
     "LLMProvider",
     "LLMRequest",
     "LLMResponse",
     "MetricNormalizationError",
     "MetricNormalizer",
+    "OpenAICompatibleProvider",
+    "OpenAIProvider",
     "ProviderError",
     "ProviderResult",
     "RawMetricObservation",
