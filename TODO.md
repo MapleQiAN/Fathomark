@@ -6,10 +6,10 @@
 
 - [ ] 完成 `Fathomark` / `渊衡` 的正式商标、包名与域名核验。
 - [ ] 确认 Python 包名、Docker 镜像名和未来 GitHub 组织/仓库名。
-- [ ] 补齐 Apache 2.0 `LICENSE` 与 `NOTICE`。
-- [ ] 编写 `SECURITY.md`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 和 `DISCLAIMER.md`。
+- [x] 补齐 Apache 2.0 `LICENSE` 与 `NOTICE`。
+- [x] 编写 `SECURITY.md`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 和 `DISCLAIMER.md`。
 - [x] 选择 Python 依赖管理与构建工具，并记录最低支持版本。(uv workspace + hatchling，Python ≥3.12)
-- [ ] 建立 CI、格式化、静态检查、测试和依赖安全扫描。(CI 已建；依赖安全扫描待补)
+- [x] 建立 CI、格式化、静态检查、测试和依赖安全扫描。(CI + pip-audit；依赖来自锁文件)
 - [x] 创建第一份可执行实施计划。(docs/design M1 计划已执行完毕)
 
 ## 1. M1：确定性评分内核 ✅ 已完成
@@ -113,19 +113,21 @@
 
 - [x] 完成不依赖外置数据库的本地单镜像启动，默认使用 SQLite。(Docker/Compose + 应用数据目录；完整黄金路径仍需接入 worker/provider)
 - [x] 用固定公开 fixture 或录制 Provider 响应展示完整黄金路径。(Compose opt-in ADBE cassette；创建→execute→approve 已有 API e2e)
-- [ ] 提供 PostgreSQL 作为可选的服务化部署示例。
+- [x] 提供 PostgreSQL 作为可选的服务化部署示例。(docker-compose.postgres.yml；默认 Compose 仍使用 SQLite)
 - [x] 编写五分钟快速开始。(docs/quickstart.md)
-- [ ] 编写 API、Python SDK 和 CLI 文档。
-- [ ] 编写 LLM Provider、Data Provider 和 ReportTheme 开发指南。
-- [ ] 编写评分框架开发和校验指南。
-- [ ] 编写数据来源、许可、缓存与再分发政策。
-- [ ] 编写提示注入、SSRF、密钥与恶意文档安全指南。
+- [x] 编写 API、Python SDK 文档。(docs/api-and-sdk.md)
+- [ ] 编写 CLI 文档。(CLI 仍为可选客户端，当前未实现)
+- [x] 编写 LLM Provider 和 Data Provider 开发指南。(MODEL_PROVIDERS.md、DATA_PROVIDERS.md)
+- [ ] 编写 ReportTheme 开发指南。(ReportTheme API 尚未实现)
+- [x] 编写评分框架开发和校验指南。(docs/framework-development.md)
+- [x] 编写数据来源、许可、缓存与再分发政策。(DATA_PROVIDERS.md)
+- [x] 编写提示注入、SSRF、密钥与恶意文档安全指南。(SECURITY.md)
 - [ ] 提供不依赖付费数据的最小公开 fixture。
 - [ ] 提供插件认证命令与契约测试模板。
-- [ ] 生成 SBOM 并加入依赖漏洞扫描。
+- [x] 生成 SBOM 并加入依赖漏洞扫描。(CI 导出 CycloneDX 1.5 并上传构建产物)
 - [ ] 完成第一个公开版本的变更日志和发布检查。
 - [x] 发布打包前将 httpx 提升为 fathomark-api 运行时依赖（webhook 发送器需要）。
-- [ ] 验证 fathomark-storage wheel 内 alembic 目录在干净安装后可用（migrate_db 端到端）。
+- [x] 验证 fathomark-storage wheel 内 alembic 目录在干净安装后可用（migrate_db 端到端）。(CI build job)
 
 ### M5 完成标准
 

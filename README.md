@@ -25,7 +25,7 @@
 <br />
 
 > [!IMPORTANT]
-> M1 and M2 are done, and M3 now covers all 11 framework factors with six specialist agents: the deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework; `packages/storage` + `packages/api` add the run state machine, storage, headless API, Python SDK, OpenAPI contract and HMAC webhooks; the M3 pipeline adds the LLM/evidence provider protocols, scope agent, resumable step orchestrator and an offline ADBE end-to-end run from creation to a draft snapshot — see [TODO.md](TODO.md).
+> M1–M3 are implemented, M4 has the shared report model/renderers and artifact manifests, and M5 now provides a zero-config Docker/SQLite demo with an opt-in recorded ADBE path from creation through approval. The deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework; `packages/storage` + `packages/api` add the run state machine, headless API, Python SDK, OpenAPI contract and HMAC webhooks — see [TODO.md](TODO.md) for live-provider, PDF and review-console boundaries.
 
 ## The idea in one sentence
 
@@ -257,7 +257,7 @@ cd Fathomark
 | Agent adapters and provider recordings | Protocols + scope and all six specialist agents ✅ (M3, offline replay) |
 | API and worker | API ✅ Implemented (M2); orchestrator ✅ (M3 slice); background worker ◻ Planned |
 | HTML / Markdown / PDF renderer | ◻ Planned |
-| Self-contained demo and release packaging | ◻ Planned |
+| Self-contained demo and release packaging | ✅ Local Docker/SQLite + recorded golden path; release hardening in progress |
 
 M1 scoring core 已实现：`packages/core` 承载 `common-stock@1.0.0` 框架的确定性评分、Veto 与评级映射。
 离线可复现：`examples/fixtures/adbe_2026-09-03` 金样测试证明同一 JSON 输入永远得到同一快照（ADBE 核心 85.75 / A+）。
@@ -266,7 +266,10 @@ M1 scoring core 已实现：`packages/core` 承载 `common-stock@1.0.0` 框架�
 
 The project is pre-1.0 and the API surface is not stable yet. Feedback is most useful when it is concrete: point to a contract, state transition, evidence rule or report section and describe the failure mode it prevents.
 
-Planned community files include `LICENSE` (Apache-2.0), `NOTICE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` and `DISCLAIMER.md`.
+See [LICENSE](LICENSE), [NOTICE](NOTICE), [CONTRIBUTING.md](CONTRIBUTING.md),
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md),
+[DISCLAIMER.md](DISCLAIMER.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md) and
+[MODEL_PROVIDERS.md](MODEL_PROVIDERS.md) for the project policies.
 
 <p align="center">
   <sub>Fathomark · 渊衡</sub><br />

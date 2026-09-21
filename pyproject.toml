@@ -5,6 +5,9 @@ description = "Fathomark 渊衡 — evidence-driven multi-agent equity scoring"
 requires-python = ">=3.12"
 dependencies = ["fathomark-core", "fathomark-storage", "fathomark-api", "fathomark-sdk", "fathomark-providers", "fathomark-agents", "fathomark-reporting"]
 
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2"]
+
 [tool.uv.sources]
 fathomark-core = { workspace = true }
 fathomark-storage = { workspace = true }

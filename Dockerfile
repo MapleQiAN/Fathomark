@@ -12,7 +12,7 @@ COPY packages ./packages
 COPY frameworks ./frameworks
 COPY examples ./examples
 
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --extra postgres
 RUN mkdir -p /data
 
 VOLUME ["/data"]

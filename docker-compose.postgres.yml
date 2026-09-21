@@ -1,0 +1,28 @@
+services:
+  api:
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fathomark}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fathomark}
+      POSTGRES_USER: ${POSTGRES_USER:-fathomark}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fathomark}:${POSTGRES_PASSWORD:-fathomark}@postgres:5432/${POSTGRES_DB:-fathomark}
+      FATHOMARK_DEMO_FIXTURE_DIR: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fathomark}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fathomark}
+      POSTGRES_USER: ${POSTGRES_USER:-fathomark}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - fathomark-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  fathomark-postgres-data:
