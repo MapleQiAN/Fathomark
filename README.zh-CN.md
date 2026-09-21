@@ -25,7 +25,7 @@
 <br />
 
 > [!IMPORTANT]
-> M1 与 M2 已完成，M3 现已由 6 个专业智能体覆盖框架全部 11 个因子：`packages/core` 中的确定性评分核心实现了 `common-stock@1.0.0` 框架；`packages/storage` 与 `packages/api` 补齐了运行状态机、存储、无界面 API、Python SDK、OpenAPI 契约与 HMAC Webhook；M3 流水线新增 LLM/证据 Provider 协议、Scope 智能体、可恢复的步骤编排器，以及从创建到草稿快照的离线 ADBE 端到端运行——参见 [TODO.md](TODO.md)。
+> M1–M3 已实现，M4 已提供共享报告模型/渲染器与制品 manifest，M5 现已提供无需外置数据库的 Docker/SQLite Demo，以及从创建到核准的可选离线 ADBE 录制路径。`packages/core` 中的确定性评分核心实现了 `common-stock@1.0.0` 框架；`packages/storage` 与 `packages/api` 提供运行状态机、无界面 API、Python SDK、OpenAPI 契约与 HMAC Webhook——实时 Provider、PDF 和审阅台边界见 [TODO.md](TODO.md)。
 
 ## 一句话说明
 
@@ -257,7 +257,7 @@ cd Fathomark
 | 智能体适配器与供应商记录 | 协议 + Scope 与全部 6 个专业智能体 ✅（M3，离线回放） |
 | API 与工作器 | API ✅ 已实现（M2）；编排器 ✅（M3 切片）；后台 worker ◻ 计划中 |
 | HTML / Markdown / PDF 渲染器 | ◻ 计划中 |
-| 自包含 Demo 与发布打包 | ◻ 计划中 |
+| 自包含 Demo 与发布打包 | ✅ 本地 Docker/SQLite + 录制黄金路径；发布加固进行中 |
 
 M1 评分核心已实现：`packages/core` 承载 `common-stock@1.0.0` 框架的确定性评分、Veto 与评级映射。
 离线可复现：`examples/fixtures/adbe_2026-09-03` 金样测试证明同一 JSON 输入永远得到同一快照（ADBE 核心 85.75 / A+）。
@@ -266,7 +266,10 @@ M1 评分核心已实现：`packages/core` 承载 `common-stock@1.0.0` 框架的
 
 项目仍处于 1.0 之前，API 表面尚未稳定。如果反馈足够具体，将特别有帮助：请指出某项契约、状态转换、证据规则或报告章节，并说明它防止的失败模式。
 
-计划中的社区文件包括 `LICENSE`（Apache-2.0）、`NOTICE`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md`、`SECURITY.md` 和 `DISCLAIMER.md`。
+请参阅 [LICENSE](LICENSE)、[NOTICE](NOTICE)、[CONTRIBUTING.md](CONTRIBUTING.md)、
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)、[SECURITY.md](SECURITY.md)、
+[DISCLAIMER.md](DISCLAIMER.md)、[DATA_PROVIDERS.md](DATA_PROVIDERS.md) 与
+[MODEL_PROVIDERS.md](MODEL_PROVIDERS.md) 中的项目政策。
 
 <p align="center">
   <sub>Fathomark · 渊衡</sub><br />

@@ -50,3 +50,51 @@ jobs:
           python -m venv /tmp/verify-venv
           /tmp/verify-venv/bin/pip install dist/fathomark_core-*.whl
           /tmp/verify-venv/bin/python -c "import fathomark_core; print(fathomark_core.__name__, 'OK')"
+
+      - name: Build fathomark-storage wheel
+        run: uv build --package fathomark-storage
+
+      - name: Verify storage wheel migrations
+        run: |
+          python -m venv /tmp/verify-storage-venv
+          /tmp/verify-storage-venv/bin/pip install \
+            "sqlalchemy>=2.0" "alembic>=1.13" "pydantic>=2.9" "pyyaml>=6.0" \
+            dist/fathomark_core-*.whl dist/fathomark_storage-*.whl
+          /tmp/verify-storage-venv/bin/python - <<'PY'
+          import sqlite3
+          import tempfile
+          from pathlib import Path
+
+          from fathomark_storage.database import migrate_db
+
+          with tempfile.TemporaryDirectory() as tmp:
+              db = Path(tmp) / "wheel.db"
+              migrate_db(f"sqlite:///{db}")
+              with sqlite3.connect(db) as conn:
+                  version = conn.execute(
+                      "SELECT version_num FROM alembic_version"
+                  ).fetchone()[0]
+              assert version == "0004"
+          print("storage wheel migrations OK")
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Export locked runtime requirements
+        run: uv export --locked --all-packages --no-dev --no-emit-local --extra postgres --format requirements.txt -o /tmp/fathomark-requirements.txt
+
+      - name: Generate CycloneDX SBOM
+        run: uv export --locked --all-packages --no-dev --no-emit-local --extra postgres --format cyclonedx1.5 -o fathomark-sbom.cdx.json
+
+      - name: Audit pinned dependencies
+        run: uvx --from pip-audit pip-audit -r /tmp/fathomark-requirements.txt --no-deps --disable-pip --strict --progress-spinner off
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: fathomark-sbom
+          path: fathomark-sbom.cdx.json

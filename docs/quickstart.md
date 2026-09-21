@@ -67,6 +67,20 @@ For a custom database URL, set it explicitly before starting the service:
 DATABASE_URL='sqlite:////absolute/path/fathomark.sqlite3' docker compose up --build
 ```
 
+For an optional PostgreSQL service deployment, use the override file. It
+includes `psycopg[binary]` in the image's `postgres` extra and waits for the
+database health check before starting the API:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up --build
+```
+
+The override's default password is for local development only. Set
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` through a secret-aware
+environment before using it outside a local machine. The PostgreSQL service
+does not enable the recorded fixture; configure a real provider/orchestrator
+explicitly for `/execute`.
+
 The image exposes the headless API and health endpoint. Provider keys and live
 collection remain explicit deployment configuration rather than hidden startup
 side effects.
