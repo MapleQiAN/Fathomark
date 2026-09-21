@@ -62,7 +62,8 @@
 - [x] 实现 SEC EDGAR/XBRL Provider。（10-K/10-Q 证据采集；companyfacts 中收入、净利润、经营现金流的可追溯 USD 单期指标。）
 - [x] 实现公司 IR 文档 Provider。(CompanyIREvidenceProvider：显式文档元数据 + HTTPS host allowlist + redirect guard)
 - [x] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。(MarketDataProvider + StooqMarketDataProvider；录制 transport 契约测试，实时可用性与授权仍由部署方确认)
-- [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。（证据截止日过滤、内容去重、冲突 ID 拒绝，以及 SEC XBRL USD 指标的日期/单位/币种标准化已实现；通用多币种和非 XBRL 口径仍待补。）
+- [x] 实现 Evidence Normalizer 基础范围：去重、冲突 ID 拒绝、截止日/新鲜度过滤，以及 SEC XBRL USD 指标标准化。
+- [x] 补齐通用多币种和非 XBRL 口径的日期/单位/币种标准化。(显式货币/数量/百分比/比例别名；不在无 FX 证据时猜测汇率)
 - [x] 实现 Scope Agent。(packages/agents ScopeAgent)
 - [x] 实现 Business Agent。(BusinessAgent：business_moat，cassette 回放)
 - [x] 实现 Financial Agent。(financial_health + earnings_quality，录制 cassette 回放)
@@ -73,7 +74,8 @@
 - [x] 实现 Market Agent。(MarketAgent：trend/liquidity/volatility/catalyst)
 - [x] 实现 Red-Team Agent。(仅审计已有提议；阻断性异议持久化并将运行置于 `needs_review`)
 - [x] 实现 Agent 输出结构修复与最多两次重试。(complete_with_repairs：1 次初始 + 至多 2 次修复)
-- [x] 实现证据冲突、数据截止日、数据新鲜度和 NR 规则。(冲突 ID 拒绝、截止日过滤、新鲜度窗口过滤；核心已有 NR/Veto 规则)
+- [x] 实现证据冲突、数据截止日和来源数据新鲜度过滤。(冲突 ID 拒绝、截止日过滤、按 source_class 的 freshness 窗口过滤；核心已有 NR/Veto 规则)
+- [x] 将证据严重不足自动路由为 `NR` 或 `needs_review`。(无可用证据进入 `needs_review`；`insufficient` 置信度由确定性核心输出 `NR`)
 - [x] 数据截止日校验（本切片范围）。(collect 步骤过滤超出截止日的证据；提议引用不存在或超出截止日的证据被拒绝)
 - [x] 实现调用次数、Token、金额和运行时间预算。(LLMBudget + step-run 累计用量；真实价格由部署配置)
 - [x] 建立录制响应和离线 Agent 契约测试。(Fake/Replay/RecordingLLMProvider + 录制契约测试)

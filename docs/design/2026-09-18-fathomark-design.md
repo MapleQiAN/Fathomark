@@ -456,30 +456,7 @@ fathomark worker
 
 首版不要求 Redis。吞吐量需要横向扩展时，再引入独立任务队列；该变化不得影响 API 和核心数据契约。
 
-## 18. PersonalInvestment 迁移与集成
-
-两个项目只通过 API 集成，不共享数据库：
-
-```text
-PersonalInvestment
-→ 创建 Fathomark 研究任务
-→ 展示 needs_review
-→ 用户提交审核与批准
-→ 拉取 approved JSON 与报告制品
-→ 更新自身研究版本索引
-```
-
-迁移规则：
-
-- 现有 Markdown 研报保持不变；
-- Fathomark 提供导入器解析当前 front matter 与因子表；
-- 旧 70 分 `scores` 表进入只读兼容期，不转换成新的正式评级；
-- 新评级按 `symbol + research_role + framework_version` 建立版本；
-- PersonalInvestment 只消费 `approved`；
-- PersonalInvestment 不能直接写 Fathomark 数据库；
-- 新评级不能自动更新持仓、交易记录或交易动作。
-
-## 19. 开源治理
+## 18. 开源治理
 
 - 代码与默认评分框架：Apache License 2.0；
 - 示例报告：CC BY 4.0；
@@ -488,16 +465,15 @@ PersonalInvestment
 
 正式发布前必须包含：`LICENSE`、`NOTICE`、`SECURITY.md`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md`、`DATA_PROVIDERS.md`、`MODEL_PROVIDERS.md` 和 `DISCLAIMER.md`。
 
-## 20. 分阶段交付
+## 19. 分阶段交付
 
 1. M1：确定性评分内核与 `common-stock@1.0.0`；
 2. M2：存储、状态机、Headless API、OpenAPI 与 Python SDK；
 3. M3：美股数据 Provider 与专业 Agent；
 4. M4：人工审核、ReportModel、多格式报告与可选 Web；
-5. M5：PersonalInvestment API 适配与历史研报导入；
-6. M6：安全、文档、许可证、示例与公开发布。
+5. M5：自包含 Demo、安全、文档、许可证与公开发布。
 
-## 21. v1 验收标准
+## 20. v1 验收标准
 
 - 一条 Docker 命令可启动单后端；
 - API 可以对一只普通美股发起深度评分；
@@ -507,13 +483,14 @@ PersonalInvestment
 - JSON、HTML、Markdown 与 PDF 内容一致；
 - 批准版本可在断网环境下复算出相同评分；
 - API、CLI 和可选 Web 使用同一业务能力；
-- PersonalInvestment 可以只通过 API 消费正式结果；
+- 新用户无需配置外部系统或外置数据库，即可完成从创建研究到批准报告的自包含演示；
 - CI 不使用真实密钥或实时网络；
 - 项目文档覆盖快速开始、Provider 开发、评分框架开发、安全和数据许可。
 
-## 22. 已确认的关键决策
+## 21. 已确认的关键决策
 
 - 项目完全独立，并面向开源发布；
+- v1 以自包含 Demo 完成研究闭环，不以特定外部系统集成为交付目标；
 - v1 先完成单股票深度评分，再考虑批量选股；
 - v1 仅支持普通上市经营公司；
 - v1 官方数据链路美股优先；
