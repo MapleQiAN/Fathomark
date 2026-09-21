@@ -1,5 +1,7 @@
 """Service layer: orchestrates repository + deterministic core."""
 
+import base64
+import binascii
 import time
 from pathlib import Path
 
@@ -175,3 +177,33 @@ class RunService:
             raise StateConflict("run has no draft snapshot; re-execute instead")
         self.repo.record_decision(run_id, "resolve", None, None, None, reason, actor)
         self.repo.advance(run_id, RunState.DRAFT)
+
+    def add_artifact(self, run_id: str, req, idem_key: str):
+        replay = self.repo.find_artifact_by_idem(idem_key)
+        if replay is not None:
+            if replay.run_id != run_id:
+                raise StateConflict(
+                    f"idempotency key {idem_key} already used by run {replay.run_id}"
+                )
+            return replay, False
+        expected_state = (
+            RunState.APPROVED if req.status == "approved" else RunState.DRAFT
+        )
+        self._require_state(run_id, expected_state)
+        try:
+            content = base64.b64decode(req.content_base64, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("content_base64 must be valid base64") from exc
+        if not content:
+            raise ValueError("artifact content must not be empty")
+        if len(content) > 8_000_000:
+            raise ValueError("artifact content exceeds 8 MB limit")
+        return self.repo.create_artifact(
+            run_id,
+            idem_key=idem_key,
+            name=req.name,
+            media_type=req.media_type,
+            content=content,
+            manifest_hash=req.manifest_hash,
+            status=req.status,
+        )

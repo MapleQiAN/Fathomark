@@ -86,8 +86,8 @@
 
 ## 4. M4：审核与多格式报告
 
-- [ ] 实现人工接受、修改、退回和批准记录。
-- [ ] 修改建议分时强制填写理由。
+- [x] 实现人工接受、修改、退回和批准记录。(HumanDecisionRow + review/approve API)
+- [x] 修改建议分时强制填写理由。(DecisionRequest.reason 非空；modify 同时要求 factor/final_score)
 - [x] 定义统一 `ReportModel`。(由同一模型驱动 JSON、Markdown 与 HTML)
 - [x] 实现机器 JSON 报告。
 - [x] 实现 GFM Markdown 渲染器和 YAML metadata。
@@ -96,7 +96,7 @@
 - [x] 实现浅色、深色与打印主题。(render_html(theme=...) + SVG theme)
 - [ ] 实现 Playwright/Chromium PDF 导出。
 - [ ] 在 Docker 镜像中固定中文字体版本。
-- [x] 实现制品 manifest 与内容哈希。(reporting 提供确定性 manifest builder；DB/API 制品持久化仍待接入)
+- [x] 实现制品 manifest 与内容哈希。(reporting 确定性 builder + artifacts 表/API 持久化与下载)
 - [ ] 增加 Markdown lint、黄金快照和格式交叉核对测试。
 - [ ] 增加 HTML 可访问性、响应式和视觉测试。
 - [ ] 增加 PDF 分页、空白页、字体和溢出测试。

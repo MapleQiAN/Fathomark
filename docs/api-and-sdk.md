@@ -14,6 +14,12 @@ in [quickstart.md](quickstart.md).
    expected lock version. Approval creates an immutable version.
 5. `GET /research-runs/{id}/result` returns the draft snapshot or approved
    version.
+6. Upload a rendered artifact with `POST /research-runs/{id}/artifacts`, using
+   base64 content and the manifest hash from the reporting package. List
+   artifacts with `GET /research-runs/{id}/artifacts` and download bytes from
+   the returned `/v1/artifacts/{artifact_id}/download` URL. Draft artifacts are
+   accepted only for draft runs; approved artifacts are accepted only after the
+   run is approved.
 
 Cancellation, retry, review resolution, webhook delivery and run lookup are
 also exposed in the OpenAPI document. Mutations that can create a version or

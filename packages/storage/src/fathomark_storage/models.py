@@ -7,6 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -161,5 +162,24 @@ class ResearchVersionRow(Base):
     version_no: Mapped[int] = mapped_column(Integer)
     snapshot_json: Mapped[dict] = mapped_column(JSON)
     content_hash: Mapped[str] = mapped_column(String(80))
+    idempotency_key: Mapped[str] = mapped_column(String(80), unique=True)
+    created_at: Mapped[datetime]
+
+
+class ArtifactRow(Base):
+    """Immutable report artifact bytes and their manifest binding."""
+
+    __tablename__ = "artifacts"
+    __table_args__ = (UniqueConstraint("run_id", "name", "status"),)
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("research_runs.id"))
+    name: Mapped[str] = mapped_column(String(120))
+    media_type: Mapped[str] = mapped_column(String(160))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    content_hash: Mapped[str] = mapped_column(String(80))
+    manifest_hash: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(8))
+    content_bytes: Mapped[bytes] = mapped_column(LargeBinary)
     idempotency_key: Mapped[str] = mapped_column(String(80), unique=True)
     created_at: Mapped[datetime]
