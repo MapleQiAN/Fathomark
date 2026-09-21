@@ -26,6 +26,12 @@ from fathomark_providers.llm import (
     ProviderError,
     prompt_key,
 )
+from fathomark_providers.market import (
+    MarketBar,
+    MarketDataProvider,
+    MarketDataResult,
+    StooqMarketDataProvider,
+)
 from fathomark_providers.remote_llm import (
     AnthropicProvider,
     JsonHttpTransport,
@@ -47,6 +53,9 @@ __all__ = [
     "LLMProvider",
     "LLMRequest",
     "LLMResponse",
+    "MarketBar",
+    "MarketDataProvider",
+    "MarketDataResult",
     "MetricNormalizationError",
     "MetricNormalizer",
     "OpenAICompatibleProvider",
@@ -57,5 +66,6 @@ __all__ = [
     "RecordingLLMProvider",
     "ReplayLLMProvider",
     "SecEdgarEvidenceProvider",
+    "StooqMarketDataProvider",
     "prompt_key",
 ]
