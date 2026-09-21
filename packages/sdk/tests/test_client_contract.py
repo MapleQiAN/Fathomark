@@ -113,3 +113,25 @@ def test_error_raises_fathomark_api_error(sdk):
         sdk.get_run("does-not-exist")
     assert excinfo.value.status_code == 404
     assert excinfo.value.detail
+
+
+def test_artifact_upload_list_and_download_via_sdk(sdk):
+    data = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    run = sdk.create_run(data["scope"], idem_key="sdk-artifact-create")
+    run_id = run["id"]
+    sdk.ingest_evidence(run_id, data["evidence"])
+    sdk.ingest_proposals(run_id, data["proposals"])
+    sdk.compute(run_id)
+
+    artifact = sdk.upload_artifact(
+        run_id,
+        name="report.md",
+        media_type="text/markdown; charset=utf-8",
+        content=b"# draft report\n",
+        manifest_hash="sha256:manifest",
+        status="draft",
+        idem_key="sdk-artifact-upload",
+    )
+
+    assert sdk.list_artifacts(run_id)[0]["id"] == artifact["id"]
+    assert sdk.download_artifact(artifact["id"]) == b"# draft report\n"
