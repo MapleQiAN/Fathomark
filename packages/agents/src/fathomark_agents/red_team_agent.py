@@ -90,6 +90,8 @@ class RedTeamAgent:
         def parse_validate(text: str) -> list[ReviewIssue]:
             try:
                 issue_dicts = json.loads(text)["issues"]
+                if not isinstance(issue_dicts, list):
+                    raise TypeError("issues must be a JSON array")
                 issues = [ReviewIssue.model_validate(item) for item in issue_dicts]
             except (KeyError, TypeError) as exc:
                 raise ValueError(f"malformed review issues payload: {exc}") from exc

@@ -68,3 +68,20 @@ def test_red_team_agent_repairs_post_cutoff_issue(scope, evidence, framework):
     assert [item.category for item in issues] == ["data_gap"]
     assert len(llm.requests) == 2
     assert "ERROR:" in llm.requests[1].prompt
+
+
+def test_red_team_agent_repairs_non_list_issue_container(scope, evidence, framework):
+    valid = json.dumps({"issues": [_issue(category="data_gap", factor=None)]})
+    llm = FakeLLMProvider([json.dumps({"issues": {}}), valid])
+
+    issues = RedTeamAgent(llm).run(
+        scope=scope,
+        framework=framework,
+        evidence=evidence,
+        observations=[],
+        proposals=[_proposal()],
+    )
+
+    assert [item.category for item in issues] == ["data_gap"]
+    assert len(llm.requests) == 2
+    assert "ERROR:" in llm.requests[1].prompt
