@@ -1,10 +1,12 @@
 import json
+from datetime import date
 from pathlib import Path
+from time import sleep
 
 import pytest
-from fathomark_agents import Orchestrator, OrchestratorError
+from fathomark_agents import LLMBudget, Orchestrator, OrchestratorError
 from fathomark_agents.financial_agent import FinancialAgent
-from fathomark_agents.orchestrator import build_default_steps
+from fathomark_agents.orchestrator import _BudgetedLLM, build_default_steps
 from fathomark_agents.specialist_agent import build_prompt
 from fathomark_agents.specialists import (
     BusinessAgent,
@@ -23,6 +25,7 @@ from fathomark_core.schemas import (
 from fathomark_providers import (
     FakeLLMProvider,
     FixtureEvidenceProvider,
+    LLMRequest,
     LLMResponse,
     ProviderError,
     ProviderResult,
@@ -126,6 +129,37 @@ def test_collect_normalizes_duplicate_provider_evidence_before_persisting(seeded
     assert [item.id for item in repo.evidence_of(run_id)] == ["ev_001", "ev_002"]
 
 
+def test_collect_reports_and_drops_stale_evidence(seeded_run):
+    repo, run_id = seeded_run
+    primary = FixtureEvidenceProvider(FIXTURE / "provider_dump.json")
+    stale = (
+        primary.fetch(repo.scope_of(run_id))
+        .evidence[0]
+        .model_copy(
+            update={
+                "id": "ev_stale",
+                "published_date": date(2020, 1, 1),
+                "content_hash": "sha256:stale",
+            }
+        )
+    )
+    orch = Orchestrator(
+        repo,
+        load_framework(ROOT / "frameworks" / "common-stock.yaml"),
+        llm=ReplayLLMProvider(FIXTURE / "llm_cassette.json"),
+        evidence_providers=[primary, _StaticEvidenceProvider([stale])],
+    )
+
+    collect = next(
+        step for step in build_default_steps(orch, run_id) if step.name == "collect"
+    )
+    output = collect.run()
+
+    assert output["dropped_stale"] == 1
+    assert output["stale_evidence_ids"] == ["ev_stale"]
+    assert [item.id for item in repo.evidence_of(run_id)] == ["ev_001", "ev_002"]
+
+
 def test_collect_persists_metric_observations_with_canonical_evidence(seeded_run):
     repo, run_id = seeded_run
     primary = FixtureEvidenceProvider(FIXTURE / "provider_dump.json")
@@ -186,6 +220,71 @@ def test_llm_budget_exceeded_fails_run(seeded_run):
     orch = _orchestrator(repo, llm, max_llm_calls=0)
     assert orch.execute(run_id) == RunState.FAILED
     assert "budget" in repo.get(run_id).error
+
+
+class _MeteredLLM:
+    name = "metered"
+    version = "1.0"
+
+    def __init__(self, *, prompt_tokens=5, completion_tokens=3, delay=0):
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
+        self.delay = delay
+
+    def complete(self, request):
+        if self.delay:
+            sleep(self.delay)
+        return LLMResponse(
+            text="{}",
+            model="metered-model",
+            prompt_tokens=self.prompt_tokens,
+            completion_tokens=self.completion_tokens,
+        )
+
+
+def test_budget_wrapper_records_token_cost_and_elapsed_usage():
+    wrapper = _BudgetedLLM(
+        _MeteredLLM(),
+        budget=LLMBudget(
+            max_calls=2,
+            prompt_cost_per_million=2.0,
+            completion_cost_per_million=4.0,
+        ),
+    )
+
+    wrapper.complete(LLMRequest(prompt="p", schema_name="s"))
+    usage = wrapper.usage()
+
+    assert usage.calls == 1
+    assert usage.prompt_tokens == 5
+    assert usage.completion_tokens == 3
+    assert usage.estimated_cost_usd == pytest.approx(0.000022)
+    assert usage.elapsed_seconds >= 0
+
+
+@pytest.mark.parametrize(
+    "budget, message",
+    [
+        (LLMBudget(max_prompt_tokens=4), "prompt-token"),
+        (LLMBudget(max_completion_tokens=2), "completion-token"),
+        (LLMBudget(max_cost_usd=0.000009, prompt_cost_per_million=2.0), "cost"),
+    ],
+)
+def test_budget_wrapper_fails_when_usage_limit_is_exceeded(budget, message):
+    wrapper = _BudgetedLLM(_MeteredLLM(), budget=budget)
+
+    with pytest.raises(ProviderError, match=message):
+        wrapper.complete(LLMRequest(prompt="p", schema_name="s"))
+
+
+def test_budget_wrapper_fails_when_runtime_limit_is_exceeded():
+    wrapper = _BudgetedLLM(
+        _MeteredLLM(delay=0.002),
+        budget=LLMBudget(max_runtime_seconds=0.000001),
+    )
+
+    with pytest.raises(ProviderError, match="runtime budget"):
+        wrapper.complete(LLMRequest(prompt="p", schema_name="s"))
 
 
 def test_execute_on_terminal_run_raises(seeded_run):
@@ -323,10 +422,10 @@ def test_non_blocking_red_team_issue_reaches_draft_and_persists_finding(seeded_r
 
     assert orch.execute(run_id) == RunState.DRAFT
     assert repo.review_issues_of(run_id) == [issue]
-    assert repo.step_record(run_id, "red_team").output_json == {
-        "review_issue_count": 1,
-        "blocking_issue_count": 0,
-    }
+    red_team_output = repo.step_record(run_id, "red_team").output_json
+    assert red_team_output["review_issue_count"] == 1
+    assert red_team_output["blocking_issue_count"] == 0
+    assert red_team_output["llm_usage"]["calls"] >= 7
     assert repo.step_record(run_id, "review_gate").output_json == {
         "review_issue_count": 1,
         "blocking_issue_count": 0,

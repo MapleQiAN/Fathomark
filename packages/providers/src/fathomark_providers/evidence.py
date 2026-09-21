@@ -6,7 +6,7 @@ import math
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
 from types import MappingProxyType
@@ -37,6 +37,8 @@ class EvidenceNormalizationResult:
 
     evidence: tuple[EvidenceItem, ...]
     dropped_after_cutoff: int
+    dropped_stale: int
+    stale_evidence_ids: tuple[str, ...]
     dropped_duplicates: int
     canonical_id_by_input_id: Mapping[str, str]
 
@@ -116,16 +118,29 @@ class EvidenceNormalizer:
         items: Iterable[EvidenceItem],
         *,
         data_cutoff: date,
+        research_date: date | None = None,
+        freshness: Mapping[str, Mapping[str, object]] | None = None,
     ) -> EvidenceNormalizationResult:
         by_content_hash: dict[str, EvidenceItem] = {}
         hashes_by_id: dict[str, str] = {}
         usable: list[EvidenceItem] = []
         dropped_after_cutoff = 0
+        dropped_stale = 0
+        stale_evidence_ids: list[str] = []
         dropped_duplicates = 0
 
         for item in items:
             if item.published_date > data_cutoff:
                 dropped_after_cutoff += 1
+                continue
+            max_age_days = self._max_age_days(item.source_class, freshness)
+            if (
+                research_date is not None
+                and max_age_days is not None
+                and item.published_date < research_date - timedelta(days=max_age_days)
+            ):
+                dropped_stale += 1
+                stale_evidence_ids.append(item.id)
                 continue
 
             existing_hash = hashes_by_id.setdefault(item.id, item.content_hash)
@@ -147,11 +162,34 @@ class EvidenceNormalizer:
         return EvidenceNormalizationResult(
             evidence=tuple(sorted(by_content_hash.values(), key=lambda item: item.id)),
             dropped_after_cutoff=dropped_after_cutoff,
+            dropped_stale=dropped_stale,
+            stale_evidence_ids=tuple(stale_evidence_ids),
             dropped_duplicates=dropped_duplicates,
             canonical_id_by_input_id=MappingProxyType(
                 {item.id: by_content_hash[item.content_hash].id for item in usable}
             ),
         )
+
+    def _max_age_days(
+        self,
+        source_class: str,
+        freshness: Mapping[str, Mapping[str, object]] | None,
+    ) -> int | None:
+        if freshness is None:
+            return None
+        policy = freshness.get(source_class)
+        if policy is None:
+            return None
+        max_age_days = policy.get("max_age_days")
+        if not isinstance(max_age_days, int) or isinstance(max_age_days, bool):
+            raise EvidenceNormalizationError(
+                f"freshness policy for {source_class!r} has invalid max_age_days"
+            )
+        if max_age_days < 0:
+            raise EvidenceNormalizationError(
+                f"freshness policy for {source_class!r} has negative max_age_days"
+            )
+        return max_age_days
 
     def _preference_key(self, item: EvidenceItem) -> tuple:
         return (
@@ -418,7 +456,7 @@ class SecEdgarEvidenceProvider:
         normalizer = MetricNormalizer()
         observations: list[MetricObservation] = []
         for metric, tags in self._METRIC_TAGS:
-            seen: set[tuple[str, str, str, date]] = set()
+            selected_raws: list[RawMetricObservation] = []
             for tag in tags:
                 tag_payload = us_gaap.get(tag)
                 units = (
@@ -427,6 +465,7 @@ class SecEdgarEvidenceProvider:
                 facts_in_usd = units.get("USD") if isinstance(units, dict) else None
                 if not isinstance(facts_in_usd, list):
                     continue
+                eligible: list[RawMetricObservation] = []
                 for fact in facts_in_usd:
                     raw = self._raw_metric(
                         metric=metric,
@@ -435,13 +474,22 @@ class SecEdgarEvidenceProvider:
                         evidence_by_accession=evidence_by_accession,
                         data_cutoff=data_cutoff,
                     )
-                    if raw is None:
-                        continue
-                    key = (raw.metric, raw.evidence_id, raw.basis, raw.data_date)
-                    if key in seen:
-                        continue
-                    observations.append(normalizer.normalize(raw))
-                    seen.add(key)
+                    if raw is not None:
+                        eligible.append(raw)
+                if eligible:
+                    # Prefer the first tag with at least one usable fact. A
+                    # lower-priority tag may coexist in companyfacts with a
+                    # different accession or period and must not silently
+                    # supplement the selected primary tag.
+                    selected_raws = eligible
+                    break
+            seen: set[tuple[str, str, str, date]] = set()
+            for raw in selected_raws:
+                key = (raw.metric, raw.evidence_id, raw.basis, raw.data_date)
+                if key in seen:
+                    continue
+                observations.append(normalizer.normalize(raw))
+                seen.add(key)
         return observations
 
     def _raw_metric(

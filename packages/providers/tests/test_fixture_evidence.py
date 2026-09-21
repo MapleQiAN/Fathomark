@@ -114,6 +114,30 @@ def test_evidence_normalizer_rejects_one_id_with_conflicting_content():
         )
 
 
+def test_evidence_normalizer_drops_stale_items_and_keeps_unknown_classes():
+    stale = _evidence(
+        "stale",
+        content_hash="sha256:stale",
+        published_date=date(2025, 1, 1),
+    )
+    unknown_class = _evidence(
+        "unknown_class",
+        content_hash="sha256:unknown",
+        published_date=date(2020, 1, 1),
+    ).model_copy(update={"source_class": "other"})
+
+    result = fathomark_providers.EvidenceNormalizer().normalize(
+        [stale, unknown_class],
+        data_cutoff=date(2026, 9, 3),
+        research_date=date(2026, 9, 3),
+        freshness={"filings": {"max_age_days": 130}},
+    )
+
+    assert [item.id for item in result.evidence] == ["unknown_class"]
+    assert result.dropped_stale == 1
+    assert result.stale_evidence_ids == ("stale",)
+
+
 def test_metric_normalizer_converts_usd_millions_to_canonical_observation():
     raw_type = getattr(fathomark_providers, "RawMetricObservation", None)
     normalizer_type = getattr(fathomark_providers, "MetricNormalizer", None)
@@ -327,3 +351,135 @@ def test_sec_edgar_provider_builds_cutoff_bounded_filing_evidence_and_metrics():
         headers["User-Agent"] == "Fathomark research@example.com"
         for _, headers in [*transport.json_calls, *transport.text_calls]
     )
+
+
+def _sec_evidence(accession: str, published_date: date) -> EvidenceItem:
+    return EvidenceItem(
+        id=f"sec:0000796343:{accession}",
+        source_name="Adobe Inc. filing",
+        source_class="filings",
+        url=f"https://example.test/{accession}",
+        published_date=published_date,
+        data_period_end=None,
+        accessed_at=datetime(2026, 9, 3, 12, 0, tzinfo=UTC),
+        grade="A",
+        content_hash=f"sha256:{accession}",
+        excerpt="Recorded filing evidence.",
+    )
+
+
+def test_sec_companyfacts_selects_primary_tag_and_period_shapes():
+    provider = fathomark_providers.SecEdgarEvidenceProvider(
+        user_agent="Fathomark research@example.com"
+    )
+    primary_accession = "0000796343-26-000201"
+    fallback_accession = "0000796343-26-000202"
+    evidence = [
+        _sec_evidence(primary_accession, date(2026, 6, 15)),
+        _sec_evidence(fallback_accession, date(2026, 2, 20)),
+    ]
+    companyfacts = {
+        "facts": {
+            "us-gaap": {
+                "RevenueFromContractWithCustomerExcludingAssessedTax": {
+                    "units": {
+                        "USD": [
+                            {
+                                "form": "10-Q",
+                                "filed": "2026-06-15",
+                                "start": "2026-02-28",
+                                "end": "2026-05-29",
+                                "accn": primary_accession,
+                                "val": 5_870_000_000,
+                            },
+                            {
+                                "form": "10-Q",
+                                "filed": "2026-06-15",
+                                "start": "2025-11-30",
+                                "end": "2026-05-29",
+                                "accn": primary_accession,
+                                "val": 17_000_000_000,
+                            },
+                        ]
+                    }
+                },
+                "SalesRevenueNet": {
+                    "units": {
+                        "USD": [
+                            {
+                                "form": "10-Q",
+                                "filed": "2026-02-20",
+                                "start": "2025-11-30",
+                                "end": "2026-02-20",
+                                "accn": fallback_accession,
+                                "val": 99_000_000_000,
+                            }
+                        ]
+                    }
+                },
+                "NetIncomeLoss": {
+                    "units": {
+                        "USD": [
+                            {
+                                "form": "10-K",
+                                "filed": "2026-02-20",
+                                "start": "2025-01-01",
+                                "end": "2025-12-31",
+                                "accn": fallback_accession,
+                                "val": 4_000_000_000,
+                            }
+                        ]
+                    }
+                },
+            }
+        }
+    }
+
+    observations = provider._companyfacts_observations(
+        companyfacts, evidence=evidence, data_cutoff=date(2026, 9, 3)
+    )
+
+    assert [
+        (item.metric, item.value, item.basis, item.evidence_id) for item in observations
+    ] == [
+        ("revenue", 5_870_000_000, "quarterly", f"sec:0000796343:{primary_accession}"),
+        ("net_income", 4_000_000_000, "annual", f"sec:0000796343:{fallback_accession}"),
+    ]
+
+
+def test_sec_companyfacts_falls_back_to_secondary_revenue_tag_when_primary_absent():
+    provider = fathomark_providers.SecEdgarEvidenceProvider(
+        user_agent="Fathomark research@example.com"
+    )
+    accession = "0000796343-26-000203"
+    observations = provider._companyfacts_observations(
+        {
+            "facts": {
+                "us-gaap": {
+                    "RevenueFromContractWithCustomerExcludingAssessedTax": {
+                        "units": {"USD": []}
+                    },
+                    "SalesRevenueNet": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "filed": "2026-06-15",
+                                    "start": "2026-02-28",
+                                    "end": "2026-05-29",
+                                    "accn": accession,
+                                    "val": 5_800_000_000,
+                                }
+                            ]
+                        }
+                    },
+                }
+            }
+        },
+        evidence=[_sec_evidence(accession, date(2026, 6, 15))],
+        data_cutoff=date(2026, 9, 3),
+    )
+
+    assert [(item.metric, item.value) for item in observations] == [
+        ("revenue", 5_800_000_000)
+    ]

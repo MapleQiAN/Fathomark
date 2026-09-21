@@ -1,5 +1,6 @@
 """Agent contracts, repair loop, and agent implementations."""
 
+from fathomark_agents.budget import LLMBudget, LLMBudgetUsage
 from fathomark_agents.contracts import AgentError
 from fathomark_agents.financial_agent import FinancialAgent
 from fathomark_agents.orchestrator import (
@@ -26,6 +27,8 @@ __all__ = [
     "FinancialAgent",
     "GovernanceRiskAgent",
     "GrowthAgent",
+    "LLMBudget",
+    "LLMBudgetUsage",
     "MarketAgent",
     "Orchestrator",
     "OrchestratorError",

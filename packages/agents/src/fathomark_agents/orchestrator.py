@@ -13,6 +13,7 @@ import json
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
+from time import monotonic
 
 from fathomark_core import evaluate
 from fathomark_core.framework import Framework
@@ -28,6 +29,7 @@ from fathomark_providers import (
 from fathomark_storage.repository import RunRepository
 from fathomark_storage.state_machine import TRANSITIONS, RunState
 
+from fathomark_agents.budget import LLMBudget, LLMBudgetUsage
 from fathomark_agents.contracts import AgentError
 from fathomark_agents.financial_agent import FinancialAgent
 from fathomark_agents.red_team_agent import RedTeamAgent
@@ -116,20 +118,84 @@ class StepSpec:
 
 
 class _BudgetedLLM:
-    """LLMProvider wrapper that caps the number of complete() calls."""
+    """LLMProvider wrapper that enforces and records run-level budgets."""
 
-    def __init__(self, inner: LLMProvider, max_calls: int):
+    def __init__(
+        self,
+        inner: LLMProvider,
+        max_calls: int | None = None,
+        *,
+        budget: LLMBudget | None = None,
+    ):
         self._inner = inner
-        self._max_calls = max_calls
-        self.calls = 0
+        if budget is None:
+            budget = LLMBudget(max_calls=32 if max_calls is None else max_calls)
+        elif max_calls is not None and max_calls != budget.max_calls:
+            raise ValueError("max_calls conflicts with budget.max_calls")
+        self.budget = budget
+        self._calls = 0
+        self._prompt_tokens = 0
+        self._completion_tokens = 0
+        self._estimated_cost_usd = 0.0
+        self._started_at = monotonic()
         self.name = inner.name
         self.version = inner.version
 
+    @property
+    def calls(self) -> int:
+        """Backward-compatible count of attempted provider calls."""
+        return self._calls
+
     def complete(self, request: LLMRequest) -> LLMResponse:
-        self.calls += 1
-        if self.calls > self._max_calls:
+        self._calls += 1
+        if self._calls > self.budget.max_calls:
             raise ProviderError("llm call budget exceeded", retriable=False)
-        return self._inner.complete(request)
+        self._check_runtime()
+        response = self._inner.complete(request)
+        if response.prompt_tokens < 0 or response.completion_tokens < 0:
+            raise ProviderError(
+                "provider returned negative token usage", retriable=False
+            )
+        self._prompt_tokens += response.prompt_tokens
+        self._completion_tokens += response.completion_tokens
+        self._estimated_cost_usd += (
+            response.prompt_tokens * self.budget.prompt_cost_per_million
+            + response.completion_tokens * self.budget.completion_cost_per_million
+        ) / 1_000_000
+        self._check_limits()
+        return response
+
+    def usage(self) -> LLMBudgetUsage:
+        return LLMBudgetUsage(
+            calls=self._calls,
+            prompt_tokens=self._prompt_tokens,
+            completion_tokens=self._completion_tokens,
+            estimated_cost_usd=self._estimated_cost_usd,
+            elapsed_seconds=monotonic() - self._started_at,
+        )
+
+    def _check_runtime(self) -> None:
+        limit = self.budget.max_runtime_seconds
+        if limit is not None and monotonic() - self._started_at > limit:
+            raise ProviderError("llm runtime budget exceeded", retriable=False)
+
+    def _check_limits(self) -> None:
+        self._check_runtime()
+        if (
+            self.budget.max_prompt_tokens is not None
+            and self._prompt_tokens > self.budget.max_prompt_tokens
+        ):
+            raise ProviderError("llm prompt-token budget exceeded", retriable=False)
+        if (
+            self.budget.max_completion_tokens is not None
+            and self._completion_tokens > self.budget.max_completion_tokens
+        ):
+            raise ProviderError("llm completion-token budget exceeded", retriable=False)
+        if (
+            self.budget.max_cost_usd is not None
+            and self._estimated_cost_usd > self.budget.max_cost_usd
+        ):
+            raise ProviderError("llm cost budget exceeded", retriable=False)
 
 
 class Orchestrator:
@@ -141,10 +207,15 @@ class Orchestrator:
         llm: LLMProvider,
         evidence_providers: list[EvidenceProvider],
         max_llm_calls: int = 32,
+        budget: LLMBudget | None = None,
     ):
         self.repo = repo
         self.framework = framework
-        self.llm = _BudgetedLLM(llm, max_llm_calls)
+        self.llm = _BudgetedLLM(
+            llm,
+            max_llm_calls if budget is None else None,
+            budget=budget,
+        )
         self.evidence_providers = list(evidence_providers)
 
     def execute(self, run_id: str) -> RunState:
@@ -382,7 +453,10 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
             fetched.extend(result.evidence)
             observations.extend(result.observations)
         normalized = EvidenceNormalizer().normalize(
-            fetched, data_cutoff=scope.data_cutoff
+            fetched,
+            data_cutoff=scope.data_cutoff,
+            research_date=scope.research_date,
+            freshness=orch.framework.freshness,
         )
         if not normalized.evidence:
             raise ProviderError(
@@ -406,6 +480,8 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
         return {
             "evidence_ids": [e.id for e in normalized.evidence],
             "dropped_after_cutoff": normalized.dropped_after_cutoff,
+            "dropped_stale": normalized.dropped_stale,
+            "stale_evidence_ids": list(normalized.stale_evidence_ids),
             "dropped_duplicates": normalized.dropped_duplicates,
             "metric_observation_count": len(canonical_observations),
         }
@@ -419,7 +495,10 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
                 observations=repo.metric_observations_of(run_id),
             )
             repo.add_proposals(run_id, proposals, origin="agent")
-            return {"factors": sorted(p.factor for p in proposals)}
+            return {
+                "factors": sorted(p.factor for p in proposals),
+                "llm_usage": orch.llm.usage().as_dict(),
+            }
 
         return agent_step
 
@@ -435,6 +514,7 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
         return {
             "review_issue_count": len(issues),
             "blocking_issue_count": sum(issue.blocking for issue in issues),
+            "llm_usage": orch.llm.usage().as_dict(),
         }
 
     def review_gate_step() -> StepResult:

@@ -73,9 +73,10 @@
 - [x] 实现 Market Agent。(MarketAgent：trend/liquidity/volatility/catalyst)
 - [x] 实现 Red-Team Agent。（结构化、证据截止日校验、持久化异议与阻塞审核闸门已完成；人工解决 API 待 M4）
 - [x] 实现 Agent 输出结构修复与最多两次重试。(complete_with_repairs：1 次初始 + 至多 2 次修复)
-- [ ] 实现证据冲突、数据截止日、数据新鲜度和 NR 规则。
+- [x] 实现证据冲突、数据截止日和来源数据新鲜度过滤。(冲突 ID 拒绝、截止日过滤、按 source_class 的 freshness 窗口过滤；核心已有 NR/Veto 规则)
+- [ ] 将证据严重不足自动路由为 `NR` 或 `needs_review`。
 - [x] 数据截止日校验（本切片范围）。(collect 步骤过滤超出截止日的证据；提议引用不存在或超出截止日的证据被拒绝)
-- [ ] 实现调用次数、Token、金额和运行时间预算。(调用次数预算已实现：max_llm_calls=32；Token/金额/运行时间待补)
+- [x] 实现调用次数、Token、金额和运行时间预算。(LLMBudget + step-run 累计用量；真实价格由部署配置)
 - [x] 建立录制响应和离线 Agent 契约测试。(Fake/Replay/RecordingLLMProvider + 录制契约测试)
 
 ### M3 完成标准
