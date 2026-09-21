@@ -1,6 +1,8 @@
 """Provider protocols and offline test doubles."""
 
 from fathomark_providers.evidence import (
+    CompanyIRDocument,
+    CompanyIREvidenceProvider,
     EvidenceNormalizationError,
     EvidenceNormalizationResult,
     EvidenceNormalizer,
@@ -24,24 +26,46 @@ from fathomark_providers.llm import (
     ProviderError,
     prompt_key,
 )
+from fathomark_providers.market import (
+    MarketBar,
+    MarketDataProvider,
+    MarketDataResult,
+    StooqMarketDataProvider,
+)
+from fathomark_providers.remote_llm import (
+    AnthropicProvider,
+    JsonHttpTransport,
+    OpenAICompatibleProvider,
+    OpenAIProvider,
+)
 
 __all__ = [
+    "AnthropicProvider",
+    "CompanyIRDocument",
+    "CompanyIREvidenceProvider",
     "EvidenceNormalizationError",
     "EvidenceNormalizationResult",
     "EvidenceNormalizer",
     "EvidenceProvider",
     "FakeLLMProvider",
     "FixtureEvidenceProvider",
+    "JsonHttpTransport",
     "LLMProvider",
     "LLMRequest",
     "LLMResponse",
+    "MarketBar",
+    "MarketDataProvider",
+    "MarketDataResult",
     "MetricNormalizationError",
     "MetricNormalizer",
+    "OpenAICompatibleProvider",
+    "OpenAIProvider",
     "ProviderError",
     "ProviderResult",
     "RawMetricObservation",
     "RecordingLLMProvider",
     "ReplayLLMProvider",
     "SecEdgarEvidenceProvider",
+    "StooqMarketDataProvider",
     "prompt_key",
 ]

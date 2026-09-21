@@ -1,5 +1,6 @@
 """Synchronous client for the Fathomark /v1 research-run API."""
 
+import base64
 from typing import Any, Self
 
 import httpx
@@ -42,6 +43,11 @@ class FathomarkClient:
 
     def _request(self, method: str, path: str, **kwargs: Any) -> dict:
         resp = self._http.request(method, self._url(path), **kwargs)
+        self._raise_for_error(resp)
+        return resp.json()
+
+    @staticmethod
+    def _raise_for_error(resp: httpx.Response) -> None:
         if resp.is_error:
             detail: Any
             try:
@@ -49,7 +55,6 @@ class FathomarkClient:
             except ValueError:
                 detail = resp.text
             raise FathomarkAPIError(resp.status_code, str(detail))
-        return resp.json()
 
     def create_run(self, payload: dict, idem_key: str) -> dict:
         """Create a research run (idempotent per ``idem_key``)."""
@@ -114,6 +119,39 @@ class FathomarkClient:
             f"/research-runs/{run_id}/resolve-review",
             json={"reason": reason, "actor": actor},
         )
+
+    def upload_artifact(
+        self,
+        run_id: str,
+        *,
+        name: str,
+        media_type: str,
+        content: bytes,
+        manifest_hash: str,
+        status: str,
+        idem_key: str,
+    ) -> dict:
+        """Upload immutable report bytes bound to a reporting manifest."""
+        return self._request(
+            "POST",
+            f"/research-runs/{run_id}/artifacts",
+            json={
+                "name": name,
+                "media_type": media_type,
+                "content_base64": base64.b64encode(content).decode("ascii"),
+                "manifest_hash": manifest_hash,
+                "status": status,
+            },
+            headers=_idem(idem_key),
+        )
+
+    def list_artifacts(self, run_id: str) -> list[dict]:
+        return self._request("GET", f"/research-runs/{run_id}/artifacts")
+
+    def download_artifact(self, artifact_id: str) -> bytes:
+        resp = self._http.get(self._url(f"/artifacts/{artifact_id}/download"))
+        self._raise_for_error(resp)
+        return resp.content
 
 
 def _idem(key: str) -> dict[str, str]:

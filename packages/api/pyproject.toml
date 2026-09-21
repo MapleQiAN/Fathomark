@@ -9,6 +9,7 @@ dependencies = [
     "fathomark-core",
     "fathomark-storage",
     "httpx>=0.27",
+    "uvicorn[standard]>=0.30",
 ]
 
 [build-system]

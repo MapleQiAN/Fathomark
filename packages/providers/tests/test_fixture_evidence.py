@@ -5,7 +5,16 @@ from pathlib import Path
 import fathomark_providers
 import pytest
 from fathomark_core.schemas import EvidenceItem, ScopeSnapshot
-from fathomark_providers import EvidenceNormalizationError, FixtureEvidenceProvider
+from fathomark_providers import (
+    CompanyIRDocument,
+    CompanyIREvidenceProvider,
+    EvidenceNormalizationError,
+    FixtureEvidenceProvider,
+    MarketBar,
+    MarketDataResult,
+    ProviderError,
+    StooqMarketDataProvider,
+)
 
 ROOT = Path(__file__).parents[3]
 
@@ -114,6 +123,54 @@ def test_evidence_normalizer_rejects_one_id_with_conflicting_content():
         )
 
 
+def test_evidence_normalizer_drops_stale_and_future_items_when_policy_is_given():
+    result = fathomark_providers.EvidenceNormalizer().normalize(
+        [
+            _evidence(
+                "stale",
+                content_hash="sha256:stale",
+                published_date=date(2025, 1, 1),
+            ),
+            _evidence(
+                "future",
+                content_hash="sha256:future",
+                published_date=date(2026, 9, 4),
+            ),
+            _evidence(
+                "fresh",
+                content_hash="sha256:fresh",
+                published_date=date(2026, 8, 1),
+            ),
+        ],
+        data_cutoff=date(2026, 9, 10),
+        research_date=date(2026, 9, 3),
+        freshness={"filings": {"max_age_days": 130}},
+    )
+
+    assert [item.id for item in result.evidence] == ["fresh"]
+    assert result.dropped_after_cutoff == 0
+    assert result.dropped_stale == 2
+    assert result.stale_evidence_ids == ("future", "stale")
+
+
+def test_evidence_normalizer_keeps_source_class_without_policy():
+    item = _evidence(
+        "other",
+        content_hash="sha256:other",
+        published_date=date(2020, 1, 1),
+    ).model_copy(update={"source_class": "other"})
+
+    result = fathomark_providers.EvidenceNormalizer().normalize(
+        [item],
+        data_cutoff=date(2026, 9, 3),
+        research_date=date(2026, 9, 3),
+        freshness={"filings": {"max_age_days": 130}},
+    )
+
+    assert [e.id for e in result.evidence] == ["other"]
+    assert result.dropped_stale == 0
+
+
 def test_metric_normalizer_converts_usd_millions_to_canonical_observation():
     raw_type = getattr(fathomark_providers, "RawMetricObservation", None)
     normalizer_type = getattr(fathomark_providers, "MetricNormalizer", None)
@@ -139,6 +196,146 @@ def test_metric_normalizer_converts_usd_millions_to_canonical_observation():
     assert observation.currency == "USD"
     assert observation.basis == "quarterly"
     assert result.observations == (observation,)
+
+
+def test_company_ir_provider_fetches_allowlisted_document_as_traceable_evidence():
+    url = "https://investors.adobe.com/news/2026-update.html"
+    transport = _RecordedSecTransport(
+        {}, {url: "<html><body><h1>Adobe update</h1><p>Revenue grew.</p></body></html>"}
+    )
+    document = CompanyIRDocument(
+        id="ir:adbe:2026-update",
+        source_name="Adobe Investor Relations",
+        url=url,
+        published_date=date(2026, 8, 20),
+        data_period_end=date(2026, 7, 31),
+    )
+    provider = CompanyIREvidenceProvider(
+        documents_by_symbol={"ADBE": (document,)},
+        user_agent="Fathomark research@example.com",
+        allowed_hosts={"investors.adobe.com"},
+        transport=transport,
+        now=lambda: datetime(2026, 9, 3, 12, 0, tzinfo=UTC),
+    )
+
+    result = provider.fetch(SCOPE)
+
+    assert provider.name == "company-ir"
+    assert result.observations == ()
+    assert result.evidence[0].source_class == "ir"
+    assert result.evidence[0].excerpt == "Adobe update Revenue grew."
+    assert result.evidence[0].data_period_end == date(2026, 7, 31)
+    assert result.evidence[0].accessed_at == datetime(2026, 9, 3, 12, 0, tzinfo=UTC)
+    assert transport.text_calls == [
+        (
+            url,
+            {
+                "User-Agent": "Fathomark research@example.com",
+                "Accept": "text/html",
+            },
+        )
+    ]
+
+
+def test_company_ir_provider_rejects_unallowlisted_or_missing_documents():
+    unsafe = CompanyIRDocument(
+        id="ir:unsafe",
+        source_name="Untrusted",
+        url="https://evil.example/exfiltrate",
+        published_date=date(2026, 8, 20),
+    )
+    provider = CompanyIREvidenceProvider(
+        documents_by_symbol={"ADBE": (unsafe,)},
+        user_agent="Fathomark research@example.com",
+        allowed_hosts={"investors.adobe.com"},
+        transport=_RecordedSecTransport({}, {}),
+    )
+    with pytest.raises(ProviderError, match="allowlisted"):
+        provider.fetch(SCOPE)
+
+    empty = CompanyIREvidenceProvider(
+        documents_by_symbol={},
+        user_agent="Fathomark research@example.com",
+        allowed_hosts={"investors.adobe.com"},
+        transport=_RecordedSecTransport({}, {}),
+    )
+    with pytest.raises(ProviderError, match="no IR documents"):
+        empty.fetch(SCOPE)
+
+
+def test_stooq_market_provider_parses_cutoff_bounded_ohlcv_csv():
+    url = "https://stooq.com/q/d/l/?s=adbe.us&i=d"
+    transport = _RecordedSecTransport(
+        {},
+        {
+            url: "Date,Open,High,Low,Close,Volume\n"
+            "2026-09-04,350,360,345,355,1200\n"
+            "2026-09-03,340,350,335,348,1100\n"
+            "2026-09-02,330,345,325,340,1000\n"
+        },
+    )
+    provider = StooqMarketDataProvider(
+        user_agent="Fathomark research@example.com",
+        transport=transport,
+        now=lambda: datetime(2026, 9, 5, 12, 0, tzinfo=UTC),
+    )
+
+    result = provider.fetch(SCOPE)
+
+    assert isinstance(result, MarketDataResult)
+    assert provider.name == "stooq"
+    assert result.symbol == "ADBE"
+    assert [bar.trading_date for bar in result.bars] == [
+        date(2026, 9, 2),
+        date(2026, 9, 3),
+    ]
+    assert result.bars[-1] == MarketBar(
+        symbol="ADBE",
+        trading_date=date(2026, 9, 3),
+        open=340.0,
+        high=350.0,
+        low=335.0,
+        close=348.0,
+        volume=1100.0,
+    )
+    assert result.source_url == url
+    assert result.content_hash.startswith("sha256:")
+    assert result.accessed_at == datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
+    assert transport.text_calls[0][1] == {
+        "User-Agent": "Fathomark research@example.com",
+        "Accept": "text/csv",
+    }
+
+
+def test_stooq_market_provider_rejects_invalid_rows_and_symbol_injection():
+    url = "https://stooq.com/q/d/l/?s=adbe.us&i=d"
+    transport = _RecordedSecTransport(
+        {},
+        {url: "Date,Open,High,Low,Close,Volume\n2026-09-03,340,330,335,348,1100\n"},
+    )
+    provider = StooqMarketDataProvider(
+        user_agent="Fathomark research@example.com", transport=transport
+    )
+
+    with pytest.raises(ProviderError, match="invalid OHLC relationship"):
+        provider.fetch(SCOPE)
+
+    with pytest.raises(ProviderError, match="unsupported market symbol"):
+        provider.fetch(SCOPE.model_copy(update={"symbol": "ADBE/../../etc"}))
+
+
+def test_stooq_market_provider_rejects_duplicate_trading_dates():
+    url = "https://stooq.com/q/d/l/?s=adbe.us&i=d"
+    row = "2026-09-03,340,350,335,348,1100"
+    transport = _RecordedSecTransport(
+        {}, {url: f"Date,Open,High,Low,Close,Volume\n{row}\n{row}\n"}
+    )
+    provider = StooqMarketDataProvider(
+        user_agent="Fathomark research@example.com", transport=transport
+    )
+
+    with pytest.raises(ProviderError, match="duplicate date"):
+        provider.fetch(SCOPE)
 
 
 class _RecordedSecTransport:

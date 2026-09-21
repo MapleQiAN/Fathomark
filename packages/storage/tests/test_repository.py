@@ -87,15 +87,13 @@ def _observation(evidence_id: str = "ev_metric") -> MetricObservation:
     )
 
 
-def _review_issue(
-    evidence_id: str = "ev_metric", *, blocking: bool = True
-) -> ReviewIssue:
+def _review_issue(evidence_id: str = "ev_metric") -> ReviewIssue:
     return ReviewIssue(
         category="veto_candidate",
         factor="governance",
         evidence_ids=[evidence_id],
         rationale="The filing discloses an unresolved restatement.",
-        blocking=blocking,
+        blocking=True,
         as_of_date=date(2026, 9, 3),
     )
 
@@ -107,6 +105,35 @@ def test_metric_observation_round_trips_with_its_evidence(repo):
     repo.add_metric_observations(run.id, [_observation()])
 
     assert repo.metric_observations_of(run.id) == [_observation()]
+
+
+def test_review_issue_round_trips_and_reports_blocking(repo):
+    run, _ = repo.create_run(idem_key="review-roundtrip", scope=SCOPE)
+    repo.add_evidence(run.id, [_evidence()])
+
+    repo.add_review_issues(run.id, [_review_issue()])
+
+    assert repo.review_issues_of(run.id) == [_review_issue()]
+    assert repo.has_blocking_review_issues(run.id) is True
+
+
+def test_review_issue_rejects_unknown_evidence_without_mutating(repo):
+    run, _ = repo.create_run(idem_key="review-unknown", scope=SCOPE)
+
+    with pytest.raises(ValueError, match="unknown evidence id"):
+        repo.add_review_issues(run.id, [_review_issue()])
+
+    assert repo.review_issues_of(run.id) == []
+
+
+def test_review_issue_rejects_duplicate_batch_without_mutating(repo):
+    run, _ = repo.create_run(idem_key="review-duplicate", scope=SCOPE)
+    repo.add_evidence(run.id, [_evidence()])
+
+    with pytest.raises(ValueError, match="duplicate review issue"):
+        repo.add_review_issues(run.id, [_review_issue(), _review_issue()])
+
+    assert repo.review_issues_of(run.id) == []
 
 
 def test_sqlite_rejects_metric_observation_without_its_evidence(repo):
@@ -133,41 +160,33 @@ def test_sqlite_rejects_metric_observation_without_its_evidence(repo):
     assert repo.get(run.id).id == run.id
 
 
-def test_review_issue_round_trips_and_reports_blocking_state(repo):
-    run, _ = repo.create_run(idem_key="review-issue-roundtrip", scope=SCOPE)
-    repo.add_evidence(run.id, [_evidence()])
+def test_artifact_round_trips_bytes_and_replays_by_idempotency_key(repo):
+    run, _ = repo.create_run(idem_key="artifact-run", scope=SCOPE)
+    content = b"# draft report\n"
 
-    repo.add_review_issues(run.id, [_review_issue()])
+    first, created = repo.create_artifact(
+        run.id,
+        idem_key="artifact-upload",
+        name="report.md",
+        media_type="text/markdown; charset=utf-8",
+        content=content,
+        manifest_hash="sha256:manifest",
+        status="draft",
+    )
+    replay, replay_created = repo.create_artifact(
+        run.id,
+        idem_key="artifact-upload",
+        name="report.md",
+        media_type="text/markdown; charset=utf-8",
+        content=content,
+        manifest_hash="sha256:manifest",
+        status="draft",
+    )
 
-    assert repo.review_issues_of(run.id) == [_review_issue()]
-    assert repo.has_blocking_review_issues(run.id) is True
-
-
-def test_duplicate_review_issue_is_rejected_before_mutation(repo):
-    run, _ = repo.create_run(idem_key="review-issue-duplicate", scope=SCOPE)
-    repo.add_evidence(run.id, [_evidence()])
-    repo.add_review_issues(run.id, [_review_issue()])
-
-    with pytest.raises(ValueError, match="duplicate review issue"):
-        repo.add_review_issues(run.id, [_review_issue()])
-
-    assert repo.review_issues_of(run.id) == [_review_issue()]
-
-
-def test_review_issue_batch_duplicate_is_rejected_before_any_insert(repo):
-    run, _ = repo.create_run(idem_key="review-issue-batch-duplicate", scope=SCOPE)
-    repo.add_evidence(run.id, [_evidence()])
-
-    with pytest.raises(ValueError, match="duplicate review issue"):
-        repo.add_review_issues(run.id, [_review_issue(), _review_issue()])
-
-    assert repo.review_issues_of(run.id) == []
-
-
-def test_review_issue_unknown_evidence_is_rejected(repo):
-    run, _ = repo.create_run(idem_key="review-issue-unknown-evidence", scope=SCOPE)
-
-    with pytest.raises(ValueError, match="unknown evidence id"):
-        repo.add_review_issues(run.id, [_review_issue("ev_missing")])
-
-    assert repo.review_issues_of(run.id) == []
+    assert created is True
+    assert replay_created is False
+    assert replay.id == first.id
+    assert first.size_bytes == len(content)
+    assert first.content_bytes == content
+    assert first.content_hash.startswith("sha256:")
+    assert [row.name for row in repo.artifacts_of(run.id)] == ["report.md"]

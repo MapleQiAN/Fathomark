@@ -1,5 +1,7 @@
 """Research-run endpoints."""
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, Header, Request, Response
 from fastapi.responses import JSONResponse
 from fathomark_agents.orchestrator import OrchestratorError
@@ -13,6 +15,8 @@ from fathomark_storage.repository import ConcurrencyError, RunRepository
 
 from fathomark_api.schemas import (
     ApproveRequest,
+    ArtifactResponse,
+    ArtifactUploadRequest,
     CreateRunRequest,
     DecisionRequest,
     IngestEvidenceRequest,
@@ -61,6 +65,21 @@ def _version_response(row) -> VersionResponse:
         snapshot_json=row.snapshot_json,
         content_hash=row.content_hash,
         created_at=row.created_at,
+    )
+
+
+def _artifact_response(row) -> ArtifactResponse:
+    return ArtifactResponse(
+        id=row.id,
+        run_id=row.run_id,
+        name=row.name,
+        media_type=row.media_type,
+        size_bytes=row.size_bytes,
+        content_hash=row.content_hash,
+        manifest_hash=row.manifest_hash,
+        status=row.status,
+        created_at=row.created_at,
+        download_url=f"/v1/artifacts/{row.id}/download",
     )
 
 
@@ -208,6 +227,54 @@ def get_result(run_id: str, request: Request):
         version=(
             _version_response(version).model_dump(mode="json") if version else None
         ),
+    )
+
+
+@router.get("/research-runs/{run_id}/artifacts")
+def list_artifacts(run_id: str, request: Request):
+    service = _service(request)
+    try:
+        return [_artifact_response(row) for row in service.repo.artifacts_of(run_id)]
+    except LookupError as exc:
+        return _error(404, exc)
+
+
+@router.post("/research-runs/{run_id}/artifacts", status_code=201)
+def upload_artifact(
+    run_id: str,
+    payload: ArtifactUploadRequest,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = Header(default=None),
+):
+    guard = _require_idem_key(idempotency_key)
+    if guard is not None:
+        return guard
+    service = _service(request)
+
+    def op():
+        row, created = service.add_artifact(run_id, payload, idempotency_key)
+        response.status_code = 201 if created else 200
+        return _artifact_response(row)
+
+    return _handle(service, op)
+
+
+@router.get("/artifacts/{artifact_id}/download")
+def download_artifact(artifact_id: str, request: Request):
+    service = _service(request)
+    try:
+        artifact = service.repo.get_artifact(artifact_id)
+    except LookupError as exc:
+        return _error(404, exc)
+    filename = quote(artifact.name, safe="")
+    return Response(
+        content=artifact.content_bytes,
+        media_type=artifact.media_type,
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
+            "X-Content-Hash": artifact.content_hash,
+        },
     )
 
 

@@ -95,6 +95,37 @@ def test_metric_observation_round_trip():
     assert MetricObservation.model_validate_json(obs.model_dump_json()) == obs
 
 
+def test_review_issue_with_known_evidence_passes():
+    issue = ReviewIssue(
+        category="veto_candidate",
+        factor="governance",
+        evidence_ids=["ev_001"],
+        rationale="The filing discloses an unresolved restatement.",
+        blocking=True,
+        as_of_date=date(2026, 9, 3),
+    )
+
+    validate_review_issue(
+        issue, framework=FRAMEWORK, evidence=EVIDENCE, data_cutoff=CUTOFF
+    )
+
+
+def test_review_issue_with_unknown_evidence_is_rejected():
+    issue = ReviewIssue(
+        category="unsupported_claim",
+        factor=None,
+        evidence_ids=["ev_missing"],
+        rationale="The conclusion is not supported by a cited filing.",
+        blocking=False,
+        as_of_date=CUTOFF,
+    )
+
+    with pytest.raises(ReviewIssueError, match="unknown evidence"):
+        validate_review_issue(
+            issue, framework=FRAMEWORK, evidence=EVIDENCE, data_cutoff=CUTOFF
+        )
+
+
 def test_valid_proposal_passes():
     validate_proposal(
         _proposal(), framework=FRAMEWORK, evidence=EVIDENCE, data_cutoff=CUTOFF

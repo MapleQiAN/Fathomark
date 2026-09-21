@@ -1,18 +1,21 @@
 """Orchestrator: DAG-ready step execution with step records and resume.
 
-Step graph is linear today (scope → collect → six specialist agents → Red-Team
-audit → review gate → compute) but expressed as StepSpec(depends_on=...) and
-executed via topological levels, so same-level steps may run concurrently later
-without a contract change. Failure semantics per design §14: provider failures
-→ failed with error recorded; agent output failures (repairs exhausted) →
-needs_review; never silent, never fabricated.
+Step graph is linear today (scope → collect → six specialist agents → compute)
+but expressed as StepSpec(depends_on=...) and executed via topological
+levels, so same-level steps may run concurrently later without a contract
+change. Failure semantics per design §14: provider failures → failed with
+error recorded; agent output failures (repairs exhausted) → needs_review;
+never silent, never fabricated.
 """
+
+from __future__ import annotations
 
 import hashlib
 import json
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
+from time import monotonic
 
 from fathomark_core import evaluate
 from fathomark_core.framework import Framework
@@ -28,6 +31,7 @@ from fathomark_providers import (
 from fathomark_storage.repository import RunRepository
 from fathomark_storage.state_machine import TRANSITIONS, RunState
 
+from fathomark_agents.budget import LLMBudget, LLMBudgetUsage
 from fathomark_agents.contracts import AgentError
 from fathomark_agents.financial_agent import FinancialAgent
 from fathomark_agents.red_team_agent import RedTeamAgent
@@ -101,12 +105,6 @@ def _bfs_path(start: RunState, goal: RunState) -> list[RunState] | None:
 
 
 @dataclass(frozen=True)
-class StepResult:
-    output: dict
-    final_state: RunState | None = None
-
-
-@dataclass(frozen=True)
 class StepSpec:
     name: str
     depends_on: tuple[str, ...]
@@ -115,21 +113,91 @@ class StepSpec:
     run: Callable[[], dict | StepResult]  # returns step output for the record
 
 
-class _BudgetedLLM:
-    """LLMProvider wrapper that caps the number of complete() calls."""
+@dataclass(frozen=True)
+class StepResult:
+    output: dict
+    final_state: RunState | None = None
 
-    def __init__(self, inner: LLMProvider, max_calls: int):
+
+class _BudgetedLLM:
+    """LLMProvider wrapper that enforces and records run-level budgets."""
+
+    def __init__(
+        self,
+        inner: LLMProvider,
+        max_calls: int | None = None,
+        *,
+        budget: LLMBudget | None = None,
+    ):
         self._inner = inner
-        self._max_calls = max_calls
-        self.calls = 0
+        if budget is None:
+            budget = LLMBudget(max_calls=32 if max_calls is None else max_calls)
+        elif max_calls is not None and max_calls != budget.max_calls:
+            raise ValueError("max_calls conflicts with budget.max_calls")
+        self.budget = budget
+        self._calls = 0
+        self._prompt_tokens = 0
+        self._completion_tokens = 0
+        self._estimated_cost_usd = 0.0
+        self._started_at = monotonic()
         self.name = inner.name
         self.version = inner.version
 
+    @property
+    def calls(self) -> int:
+        """Backward-compatible count of attempted provider calls."""
+        return self._calls
+
     def complete(self, request: LLMRequest) -> LLMResponse:
-        self.calls += 1
-        if self.calls > self._max_calls:
+        self._calls += 1
+        if self._calls > self.budget.max_calls:
             raise ProviderError("llm call budget exceeded", retriable=False)
-        return self._inner.complete(request)
+        self._check_runtime()
+        response = self._inner.complete(request)
+        if response.prompt_tokens < 0 or response.completion_tokens < 0:
+            raise ProviderError(
+                "provider returned negative token usage", retriable=False
+            )
+        self._prompt_tokens += response.prompt_tokens
+        self._completion_tokens += response.completion_tokens
+        self._estimated_cost_usd += (
+            response.prompt_tokens * self.budget.prompt_cost_per_million
+            + response.completion_tokens * self.budget.completion_cost_per_million
+        ) / 1_000_000
+        self._check_limits()
+        return response
+
+    def usage(self) -> LLMBudgetUsage:
+        return LLMBudgetUsage(
+            calls=self._calls,
+            prompt_tokens=self._prompt_tokens,
+            completion_tokens=self._completion_tokens,
+            estimated_cost_usd=self._estimated_cost_usd,
+            elapsed_seconds=monotonic() - self._started_at,
+        )
+
+    def _check_runtime(self) -> None:
+        limit = self.budget.max_runtime_seconds
+        if limit is not None and monotonic() - self._started_at > limit:
+            raise ProviderError("llm runtime budget exceeded", retriable=False)
+
+    def _check_limits(self) -> None:
+        self._check_runtime()
+        if (
+            self.budget.max_prompt_tokens is not None
+            and self._prompt_tokens > self.budget.max_prompt_tokens
+        ):
+            raise ProviderError("llm prompt-token budget exceeded", retriable=False)
+        if (
+            self.budget.max_completion_tokens is not None
+            and self._completion_tokens > self.budget.max_completion_tokens
+        ):
+            raise ProviderError("llm completion-token budget exceeded", retriable=False)
+        if (
+            self.budget.max_cost_usd is not None
+            and self._estimated_cost_usd > self.budget.max_cost_usd
+        ):
+            raise ProviderError("llm cost budget exceeded", retriable=False)
 
 
 class Orchestrator:
@@ -141,10 +209,15 @@ class Orchestrator:
         llm: LLMProvider,
         evidence_providers: list[EvidenceProvider],
         max_llm_calls: int = 32,
+        budget: LLMBudget | None = None,
     ):
         self.repo = repo
         self.framework = framework
-        self.llm = _BudgetedLLM(llm, max_llm_calls)
+        self.llm = _BudgetedLLM(
+            llm,
+            max_llm_calls if budget is None else None,
+            budget=budget,
+        )
         self.evidence_providers = list(evidence_providers)
 
     def execute(self, run_id: str) -> RunState:
@@ -152,11 +225,12 @@ class Orchestrator:
         state = RunState(row.state)
         if state in _NON_EXECUTABLE:
             raise OrchestratorError(f"run {run_id} in terminal state {state}")
-        if self.repo.has_blocking_review_issues(run_id):
-            self._ensure_state(run_id, RunState.NEEDS_REVIEW)
+        self._require_orchestrator_driven(run_id)
+        if state == RunState.NEEDS_REVIEW and self.repo.has_blocking_review_issues(
+            run_id
+        ):
             self.repo.session.commit()
             return RunState.NEEDS_REVIEW
-        self._require_orchestrator_driven(run_id)
         if state == RunState.FAILED:
             # Re-entry point for failed runs; step records decide what re-runs.
             self.repo.advance(run_id, RunState.COLLECTING)
@@ -213,14 +287,12 @@ class Orchestrator:
             result = step.run()
             if isinstance(result, StepResult):
                 output = result.output
-                final_state = result.final_state
+                if result.final_state is not None:
+                    self._ensure_state(run_id, result.final_state)
             else:
                 output = result
-                final_state = None
             if step.exit_state is not None:
                 self._ensure_state(run_id, step.exit_state)
-            if final_state is not None:
-                self._ensure_state(run_id, final_state)
         except AgentError as exc:
             self.repo.fail_step(run_id, step.name, str(exc))
             self.repo.get(run_id).error = str(exc)
@@ -235,7 +307,9 @@ class Orchestrator:
             self.repo.fail_step(run_id, step.name, str(exc))
             return self._fail_run(run_id, f"{type(exc).__name__}: {exc}")
         self.repo.finish_step(run_id, step.name, output)
-        return final_state
+        if isinstance(result, StepResult) and result.final_state is not None:
+            return result.final_state
+        return None
 
     def _fail_run(self, run_id: str, error: str) -> RunState:
         row = self.repo.get(run_id)
@@ -270,9 +344,7 @@ class Orchestrator:
                 ",".join(p.name for p in self.evidence_providers) or None,
                 ",".join(p.version for p in self.evidence_providers) or None,
             )
-        if step_name in _AGENT_STEP_NAMES:
-            return self.llm.name, self.llm.version
-        if step_name == "red_team":
+        if step_name in _AGENT_STEP_NAMES or step_name == "red_team":
             return self.llm.name, self.llm.version
         return None, None
 
@@ -299,20 +371,14 @@ class Orchestrator:
                 "scope": scope,
                 "evidence": self._evidence_index(run_id),
                 "observations": self._metric_index(run_id),
-                "proposals": [
-                    proposal.model_dump(mode="json")
-                    for proposal in sorted(
-                        self.repo.proposals_of(run_id), key=lambda item: item.factor
-                    )
-                ],
+                "proposals": self._proposal_index(run_id),
             }
         elif step_name == "review_gate":
             payload = {
-                "scope": scope,
-                "review_issues": [
+                "issues": [
                     issue.model_dump(mode="json")
                     for issue in self.repo.review_issues_of(run_id)
-                ],
+                ]
             }
         elif step_name == "compute":
             payload = {
@@ -341,6 +407,23 @@ class Orchestrator:
                 "evidence_id": observation.evidence_id,
             }
             for observation in self.repo.metric_observations_of(run_id)
+        ]
+
+    def _proposal_index(self, run_id: str) -> list[dict]:
+        return [
+            {
+                "factor": proposal.factor,
+                "proposed_score": proposal.proposed_score,
+                "rationale": proposal.rationale,
+                "evidence_ids": proposal.evidence_ids,
+                "counter_evidence_ids": proposal.counter_evidence_ids,
+                "confidence": proposal.confidence,
+                "missing_data": proposal.missing_data,
+                "as_of_date": proposal.as_of_date.isoformat(),
+            }
+            for proposal in sorted(
+                self.repo.proposals_of(run_id), key=lambda proposal: proposal.factor
+            )
         ]
 
 
@@ -382,7 +465,10 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
             fetched.extend(result.evidence)
             observations.extend(result.observations)
         normalized = EvidenceNormalizer().normalize(
-            fetched, data_cutoff=scope.data_cutoff
+            fetched,
+            data_cutoff=scope.data_cutoff,
+            research_date=scope.research_date,
+            freshness=orch.framework.freshness,
         )
         if not normalized.evidence:
             raise ProviderError(
@@ -406,6 +492,8 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
         return {
             "evidence_ids": [e.id for e in normalized.evidence],
             "dropped_after_cutoff": normalized.dropped_after_cutoff,
+            "dropped_stale": normalized.dropped_stale,
+            "stale_evidence_ids": list(normalized.stale_evidence_ids),
             "dropped_duplicates": normalized.dropped_duplicates,
             "metric_observation_count": len(canonical_observations),
         }
@@ -419,7 +507,10 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
                 observations=repo.metric_observations_of(run_id),
             )
             repo.add_proposals(run_id, proposals, origin="agent")
-            return {"factors": sorted(p.factor for p in proposals)}
+            return {
+                "factors": sorted(p.factor for p in proposals),
+                "llm_usage": orch.llm.usage().as_dict(),
+            }
 
         return agent_step
 
@@ -433,19 +524,16 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
         )
         repo.add_review_issues(run_id, issues)
         return {
-            "review_issue_count": len(issues),
-            "blocking_issue_count": sum(issue.blocking for issue in issues),
+            "issue_count": len(issues),
+            "llm_usage": orch.llm.usage().as_dict(),
         }
 
-    def review_gate_step() -> StepResult:
-        issues = repo.review_issues_of(run_id)
-        output = {
-            "review_issue_count": len(issues),
-            "blocking_issue_count": sum(issue.blocking for issue in issues),
-        }
-        if output["blocking_issue_count"]:
+    def review_gate_step() -> dict | StepResult:
+        blocking_count = sum(issue.blocking for issue in repo.review_issues_of(run_id))
+        output = {"blocking_issue_count": blocking_count}
+        if blocking_count:
             return StepResult(output, RunState.NEEDS_REVIEW)
-        return StepResult(output)
+        return output
 
     def compute_step() -> dict:
         snapshot = evaluate(
@@ -474,7 +562,11 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
             red_team_step,
         ),
         StepSpec(
-            "review_gate", ("red_team",), RunState.AUDITING, None, review_gate_step
+            "review_gate",
+            ("red_team",),
+            RunState.AUDITING,
+            None,
+            review_gate_step,
         ),
         StepSpec(
             "compute",
