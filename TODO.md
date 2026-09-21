@@ -96,7 +96,7 @@
 - [ ] 实现浅色、深色与打印主题。
 - [ ] 实现 Playwright/Chromium PDF 导出。
 - [ ] 在 Docker 镜像中固定中文字体版本。
-- [ ] 实现制品 manifest 与内容哈希。
+- [x] 实现制品 manifest 与内容哈希。(reporting 提供确定性 manifest builder；DB/API 制品持久化仍待接入)
 - [ ] 增加 Markdown lint、黄金快照和格式交叉核对测试。
 - [ ] 增加 HTML 可访问性、响应式和视觉测试。
 - [ ] 增加 PDF 分页、空白页、字体和溢出测试。
