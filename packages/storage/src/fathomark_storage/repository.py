@@ -1,9 +1,14 @@
 """All DB access for research runs. No web imports here."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
-from fathomark_core.schemas import EvidenceItem, FactorProposal, ScopeSnapshot
+from fathomark_core.schemas import (
+    EvidenceItem,
+    FactorProposal,
+    MetricObservation,
+    ScopeSnapshot,
+)
 from fathomark_core.snapshot import ScoreSnapshot
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,6 +17,7 @@ from fathomark_storage.models import (
     EvidenceItemRow,
     FactorProposalRow,
     HumanDecisionRow,
+    MetricObservationRow,
     ResearchRunRow,
     ResearchVersionRow,
     ScoreSnapshotRow,
@@ -151,6 +157,62 @@ class RunRepository:
             )
         self.session.flush()
 
+    def add_metric_observations(
+        self, run_id: str, observations: list[MetricObservation]
+    ) -> int:
+        self.get(run_id)
+        evidence_ids = {
+            evidence.evidence_id
+            for evidence in self.session.scalars(
+                select(EvidenceItemRow).where(EvidenceItemRow.run_id == run_id)
+            )
+        }
+        for observation in observations:
+            if observation.evidence_id not in evidence_ids:
+                raise ValueError(f"unknown evidence id: {observation.evidence_id}")
+
+        existing = {
+            (
+                observation.metric,
+                observation.data_date,
+                observation.evidence_id,
+                observation.basis,
+            )
+            for observation in self.session.scalars(
+                select(MetricObservationRow).where(
+                    MetricObservationRow.run_id == run_id
+                )
+            )
+        }
+        batch: set[tuple[str, date, str, str]] = set()
+        for observation in observations:
+            key = (
+                observation.metric,
+                observation.data_date,
+                observation.evidence_id,
+                observation.basis,
+            )
+            if key in existing or key in batch:
+                raise ValueError(f"duplicate metric observation: {key}")
+            batch.add(key)
+
+        for observation in observations:
+            self.session.add(
+                MetricObservationRow(
+                    run_id=run_id,
+                    metric=observation.metric,
+                    value=observation.value,
+                    unit=observation.unit,
+                    currency=observation.currency,
+                    basis=observation.basis,
+                    formula=observation.formula,
+                    data_date=observation.data_date,
+                    evidence_id=observation.evidence_id,
+                )
+            )
+        self.session.flush()
+        return len(observations)
+
     def replace_proposal_score(
         self, run_id: str, factor: str, score: float, rationale: str
     ) -> None:
@@ -202,6 +264,31 @@ class RunRepository:
                 as_of_date=r.as_of_date,
             )
             for r in rows
+        ]
+
+    def metric_observations_of(self, run_id: str) -> list[MetricObservation]:
+        rows = self.session.scalars(
+            select(MetricObservationRow)
+            .where(MetricObservationRow.run_id == run_id)
+            .order_by(
+                MetricObservationRow.data_date,
+                MetricObservationRow.metric,
+                MetricObservationRow.basis,
+                MetricObservationRow.evidence_id,
+            )
+        )
+        return [
+            MetricObservation(
+                metric=row.metric,
+                value=row.value,
+                unit=row.unit,
+                currency=row.currency,
+                basis=row.basis,
+                formula=row.formula,
+                data_date=row.data_date,
+                evidence_id=row.evidence_id,
+            )
+            for row in rows
         ]
 
     def save_draft_snapshot(self, run_id: str, snapshot: ScoreSnapshot) -> None:

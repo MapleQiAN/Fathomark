@@ -4,7 +4,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from fathomark_storage.models import Base
@@ -25,6 +25,13 @@ def _alembic_dir() -> Path:
 def create_session_factory(url: str) -> sessionmaker:
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
     engine = create_engine(url, connect_args=connect_args)
+    if url.startswith("sqlite"):
+
+        @event.listens_for(engine, "connect")
+        def _enable_foreign_keys(dbapi_connection, connection_record) -> None:
+            del connection_record
+            dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
