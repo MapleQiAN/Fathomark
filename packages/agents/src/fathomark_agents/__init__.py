@@ -8,6 +8,7 @@ from fathomark_agents.orchestrator import (
     StepSpec,
     build_default_steps,
 )
+from fathomark_agents.red_team_agent import RedTeamAgent
 from fathomark_agents.repair import complete_with_repairs
 from fathomark_agents.scope_agent import ScopeAgent
 from fathomark_agents.specialist_agent import SpecialistAgent
@@ -28,6 +29,7 @@ __all__ = [
     "MarketAgent",
     "Orchestrator",
     "OrchestratorError",
+    "RedTeamAgent",
     "ScopeAgent",
     "SpecialistAgent",
     "StepSpec",
