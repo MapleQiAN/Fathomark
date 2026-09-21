@@ -91,9 +91,9 @@
 - [x] 定义统一 `ReportModel`。(由同一模型驱动 JSON、Markdown 与 HTML)
 - [x] 实现机器 JSON 报告。
 - [x] 实现 GFM Markdown 渲染器和 YAML metadata。
-- [x] 实现专业 HTML 模板、证据脚注和离线单文件导出。(基础自包含模板；图表与主题仍待补)
-- [ ] 实现因子图、估值敏感性矩阵和评分变化 SVG。
-- [ ] 实现浅色、深色与打印主题。
+- [x] 实现专业 HTML 模板、证据脚注和离线单文件导出。(基础自包含模板；图表与主题已补，PDF/字体仍待补)
+- [x] 实现因子图、估值敏感性矩阵和评分变化 SVG。(packages/reporting/charts.py)
+- [x] 实现浅色、深色与打印主题。(render_html(theme=...) + SVG theme)
 - [ ] 实现 Playwright/Chromium PDF 导出。
 - [ ] 在 Docker 镜像中固定中文字体版本。
 - [x] 实现制品 manifest 与内容哈希。(reporting 提供确定性 manifest builder；DB/API 制品持久化仍待接入)
@@ -118,7 +118,7 @@
 - [x] 编写 API、Python SDK 文档。(docs/api-and-sdk.md)
 - [ ] 编写 CLI 文档。(CLI 仍为可选客户端，当前未实现)
 - [x] 编写 LLM Provider 和 Data Provider 开发指南。(MODEL_PROVIDERS.md、DATA_PROVIDERS.md)
-- [ ] 编写 ReportTheme 开发指南。(ReportTheme API 尚未实现)
+- [x] 编写 ReportTheme 开发指南。(docs/reporting-development.md)
 - [x] 编写评分框架开发和校验指南。(docs/framework-development.md)
 - [x] 编写数据来源、许可、缓存与再分发政策。(DATA_PROVIDERS.md)
 - [x] 编写提示注入、SSRF、密钥与恶意文档安全指南。(SECURITY.md)

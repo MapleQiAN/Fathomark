@@ -77,6 +77,24 @@ def test_html_renderer_is_escaped_self_contained_and_accessible():
     assert '<link href="http' not in rendered
 
 
+def test_html_themes_include_explicit_dark_and_print_contracts():
+    report = _report()
+    light = render_html(report, theme="light")
+    assert 'data-theme="light"' in light
+    assert "--report-background:#fff" in light
+
+    dark = render_html(report, theme="dark")
+    assert 'data-theme="dark"' in dark
+    assert "--report-background:#17212b" in dark
+
+    printable = render_html(report, theme="print")
+    assert 'data-theme="print"' in printable
+    assert "@media print" in printable
+
+    with pytest.raises(ValueError, match="unknown HTML theme"):
+        render_html(report, theme="sepia")
+
+
 def test_renderers_show_risk_and_traceability_fields():
     report = _report()
     tactical = report.lenses[-1]
