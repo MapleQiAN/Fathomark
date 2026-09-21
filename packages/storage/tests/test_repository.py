@@ -158,3 +158,35 @@ def test_sqlite_rejects_metric_observation_without_its_evidence(repo):
 
     repo.session.rollback()
     assert repo.get(run.id).id == run.id
+
+
+def test_artifact_round_trips_bytes_and_replays_by_idempotency_key(repo):
+    run, _ = repo.create_run(idem_key="artifact-run", scope=SCOPE)
+    content = b"# draft report\n"
+
+    first, created = repo.create_artifact(
+        run.id,
+        idem_key="artifact-upload",
+        name="report.md",
+        media_type="text/markdown; charset=utf-8",
+        content=content,
+        manifest_hash="sha256:manifest",
+        status="draft",
+    )
+    replay, replay_created = repo.create_artifact(
+        run.id,
+        idem_key="artifact-upload",
+        name="report.md",
+        media_type="text/markdown; charset=utf-8",
+        content=content,
+        manifest_hash="sha256:manifest",
+        status="draft",
+    )
+
+    assert created is True
+    assert replay_created is False
+    assert replay.id == first.id
+    assert first.size_bytes == len(content)
+    assert first.content_bytes == content
+    assert first.content_hash.startswith("sha256:")
+    assert [row.name for row in repo.artifacts_of(run.id)] == ["report.md"]
