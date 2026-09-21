@@ -10,7 +10,10 @@ from fathomark_providers import (
     CompanyIREvidenceProvider,
     EvidenceNormalizationError,
     FixtureEvidenceProvider,
+    MarketBar,
+    MarketDataResult,
     ProviderError,
+    StooqMarketDataProvider,
 )
 
 ROOT = Path(__file__).parents[3]
@@ -234,6 +237,81 @@ def test_company_ir_provider_rejects_unallowlisted_or_missing_documents():
     )
     with pytest.raises(ProviderError, match="no IR documents"):
         empty.fetch(SCOPE)
+
+
+def test_stooq_market_provider_parses_cutoff_bounded_ohlcv_csv():
+    url = "https://stooq.com/q/d/l/?s=adbe.us&i=d"
+    transport = _RecordedSecTransport(
+        {},
+        {
+            url: "Date,Open,High,Low,Close,Volume\n"
+            "2026-09-04,350,360,345,355,1200\n"
+            "2026-09-03,340,350,335,348,1100\n"
+            "2026-09-02,330,345,325,340,1000\n"
+        },
+    )
+    provider = StooqMarketDataProvider(
+        user_agent="Fathomark research@example.com",
+        transport=transport,
+        now=lambda: datetime(2026, 9, 5, 12, 0, tzinfo=UTC),
+    )
+
+    result = provider.fetch(SCOPE)
+
+    assert isinstance(result, MarketDataResult)
+    assert provider.name == "stooq"
+    assert result.symbol == "ADBE"
+    assert [bar.trading_date for bar in result.bars] == [
+        date(2026, 9, 2),
+        date(2026, 9, 3),
+    ]
+    assert result.bars[-1] == MarketBar(
+        symbol="ADBE",
+        trading_date=date(2026, 9, 3),
+        open=340.0,
+        high=350.0,
+        low=335.0,
+        close=348.0,
+        volume=1100.0,
+    )
+    assert result.source_url == url
+    assert result.content_hash.startswith("sha256:")
+    assert result.accessed_at == datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
+    assert transport.text_calls[0][1] == {
+        "User-Agent": "Fathomark research@example.com",
+        "Accept": "text/csv",
+    }
+
+
+def test_stooq_market_provider_rejects_invalid_rows_and_symbol_injection():
+    url = "https://stooq.com/q/d/l/?s=adbe.us&i=d"
+    transport = _RecordedSecTransport(
+        {},
+        {url: "Date,Open,High,Low,Close,Volume\n2026-09-03,340,330,335,348,1100\n"},
+    )
+    provider = StooqMarketDataProvider(
+        user_agent="Fathomark research@example.com", transport=transport
+    )
+
+    with pytest.raises(ProviderError, match="invalid OHLC relationship"):
+        provider.fetch(SCOPE)
+
+    with pytest.raises(ProviderError, match="unsupported market symbol"):
+        provider.fetch(SCOPE.model_copy(update={"symbol": "ADBE/../../etc"}))
+
+
+def test_stooq_market_provider_rejects_duplicate_trading_dates():
+    url = "https://stooq.com/q/d/l/?s=adbe.us&i=d"
+    row = "2026-09-03,340,350,335,348,1100"
+    transport = _RecordedSecTransport(
+        {}, {url: f"Date,Open,High,Low,Close,Volume\n{row}\n{row}\n"}
+    )
+    provider = StooqMarketDataProvider(
+        user_agent="Fathomark research@example.com", transport=transport
+    )
+
+    with pytest.raises(ProviderError, match="duplicate date"):
+        provider.fetch(SCOPE)
 
 
 class _RecordedSecTransport:

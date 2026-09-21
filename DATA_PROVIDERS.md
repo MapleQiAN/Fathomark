@@ -33,3 +33,13 @@ the adapter does not guess dates from page prose. Every URL must be HTTPS and
 its hostname must be in the explicit allowlist; redirects are checked against
 the same allowlist. Keep the manifest small, bounded, and reviewed, and use an
 identifiable `User-Agent` as required by the source.
+
+## Market data adapter
+
+`MarketDataProvider` returns validated daily OHLCV bars and preserves the
+source URL, access time and raw-response hash. The included
+`StooqMarketDataProvider` is a replaceable public-data adapter for US symbols;
+it applies the research cutoff while parsing, rejects malformed or duplicate
+rows, and restricts redirects to `stooq.com`. Inject a recorded transport for
+CI and tests. Stooq availability, rate limits, licensing and redistribution
+terms remain operator responsibilities; no live market call is required by CI.
