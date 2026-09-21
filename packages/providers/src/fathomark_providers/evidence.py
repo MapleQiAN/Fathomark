@@ -39,6 +39,8 @@ class EvidenceNormalizationResult:
     dropped_after_cutoff: int
     dropped_duplicates: int
     canonical_id_by_input_id: Mapping[str, str]
+    dropped_stale: int = 0
+    stale_evidence_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -116,17 +118,32 @@ class EvidenceNormalizer:
         items: Iterable[EvidenceItem],
         *,
         data_cutoff: date,
+        research_date: date | None = None,
+        freshness: Mapping[str, Mapping[str, object]] | None = None,
     ) -> EvidenceNormalizationResult:
         by_content_hash: dict[str, EvidenceItem] = {}
         hashes_by_id: dict[str, str] = {}
         usable: list[EvidenceItem] = []
         dropped_after_cutoff = 0
         dropped_duplicates = 0
+        dropped_stale = 0
+        stale_evidence_ids: set[str] = set()
 
         for item in items:
             if item.published_date > data_cutoff:
                 dropped_after_cutoff += 1
                 continue
+
+            if research_date is not None and freshness is not None:
+                policy = freshness.get(item.source_class)
+                max_age = policy.get("max_age_days") if policy else None
+                if isinstance(max_age, (int, float)) and (
+                    item.published_date > research_date
+                    or (research_date - item.published_date).days > max_age
+                ):
+                    dropped_stale += 1
+                    stale_evidence_ids.add(item.id)
+                    continue
 
             existing_hash = hashes_by_id.setdefault(item.id, item.content_hash)
             if existing_hash != item.content_hash:
@@ -151,6 +168,8 @@ class EvidenceNormalizer:
             canonical_id_by_input_id=MappingProxyType(
                 {item.id: by_content_hash[item.content_hash].id for item in usable}
             ),
+            dropped_stale=dropped_stale,
+            stale_evidence_ids=tuple(sorted(stale_evidence_ids)),
         )
 
     def _preference_key(self, item: EvidenceItem) -> tuple:
