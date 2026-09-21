@@ -125,6 +125,8 @@ class RunService:
                 )
             return replay, False
         self._require_state(run_id, RunState.DRAFT)
+        if self.repo.has_blocking_review_issues(run_id):
+            raise StateConflict("run has unresolved blocking review issues")
         version, _ = self.repo.create_version(run_id, idem_key, expected_lock)
         self.repo.record_decision(
             run_id, "approve", None, None, None, f"approved by {actor}", actor
@@ -165,6 +167,8 @@ class RunService:
 
     def resolve_review(self, run_id: str, reason: str, actor: str) -> None:
         self._require_state(run_id, RunState.NEEDS_REVIEW)
+        if self.repo.has_blocking_review_issues(run_id):
+            raise StateConflict("run has unresolved blocking review issues")
         if self.repo.latest_snapshot(run_id) is None:
             # needs_review from an agent failure has no draft to return to;
             # the run must be re-executed instead of advancing blind.

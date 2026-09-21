@@ -9,6 +9,7 @@ members = [
     "fathomark-api",
     "fathomark-core",
     "fathomark-providers",
+    "fathomark-reporting",
     "fathomark-sdk",
     "fathomark-storage",
 ]
@@ -101,6 +102,7 @@ dependencies = [
     { name = "fathomark-api" },
     { name = "fathomark-core" },
     { name = "fathomark-providers" },
+    { name = "fathomark-reporting" },
     { name = "fathomark-sdk" },
     { name = "fathomark-storage" },
 ]
@@ -119,6 +121,7 @@ requires-dist = [
     { name = "fathomark-api", editable = "packages/api" },
     { name = "fathomark-core", editable = "packages/core" },
     { name = "fathomark-providers", editable = "packages/providers" },
+    { name = "fathomark-reporting", editable = "packages/reporting" },
     { name = "fathomark-sdk", editable = "packages/sdk" },
     { name = "fathomark-storage", editable = "packages/storage" },
 ]
@@ -194,6 +197,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "fathomark-core", editable = "packages/core" }]
+
+[[package]]
+name = "fathomark-reporting"
+version = "0.1.0"
+source = { editable = "packages/reporting" }
+dependencies = [
+    { name = "fathomark-core" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fathomark-core", editable = "packages/core" },
+    { name = "pydantic", specifier = ">=2.9" },
+]
 
 [[package]]
 name = "fathomark-sdk"

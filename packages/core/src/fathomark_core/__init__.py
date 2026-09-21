@@ -5,7 +5,11 @@ from fathomark_core.schemas import (
     EvidenceItem,
     FactorProposal,
     MetricObservation,
+    ReviewIssue,
+    ReviewIssueCategory,
+    ReviewIssueError,
     ScopeSnapshot,
+    validate_review_issue,
 )
 from fathomark_core.snapshot import ScoreSnapshot, evaluate
 
@@ -15,8 +19,12 @@ __all__ = [
     "Framework",
     "FrameworkValidationError",
     "MetricObservation",
+    "ReviewIssue",
+    "ReviewIssueCategory",
+    "ReviewIssueError",
     "ScopeSnapshot",
     "ScoreSnapshot",
     "evaluate",
     "load_framework",
+    "validate_review_issue",
 ]

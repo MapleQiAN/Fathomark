@@ -41,6 +41,38 @@ def _set_state(client, run_id, state) -> None:
         session.close()
 
 
+def _add_blocking_review_issue(client, run_id) -> None:
+    import json
+
+    from conftest import ROOT
+    from fathomark_core.schemas import ReviewIssue
+    from fathomark_storage.repository import RunRepository
+
+    data = json.loads(
+        (ROOT / "examples" / "fixtures" / "adbe_2026-09-03" / "input.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    session = client.app.state.session_factory()
+    try:
+        RunRepository(session).add_review_issues(
+            run_id,
+            [
+                ReviewIssue(
+                    category="data_gap",
+                    factor=None,
+                    evidence_ids=[data["evidence"][0]["id"]],
+                    rationale="A material primary-source gap remains before publication.",
+                    blocking=True,
+                    as_of_date="2026-09-03",
+                )
+            ],
+        )
+        session.commit()
+    finally:
+        session.close()
+
+
 # --- cancel ---
 
 
@@ -195,6 +227,33 @@ def test_resolve_review_moves_to_draft(client):
     assert r.status_code == 200
     assert r.json()["state"] == "draft"
     assert client.get(f"/v1/research-runs/{run_id}").json()["state"] == "draft"
+
+
+def test_resolve_review_rejects_unresolved_blocking_audit(client):
+    run_id = run_to_draft(client, "resolve-blocking")
+    _add_blocking_review_issue(client, run_id)
+    _return_to_needs_review(client, run_id)
+
+    r = client.post(
+        f"/v1/research-runs/{run_id}/resolve-review",
+        json={"reason": "已审阅", "actor": "reviewer-1"},
+    )
+
+    assert r.status_code == 409
+    assert client.get(f"/v1/research-runs/{run_id}").json()["state"] == "needs_review"
+
+
+def test_approve_rejects_unresolved_blocking_audit(client):
+    run_id = run_to_draft(client, "approve-blocking")
+    _add_blocking_review_issue(client, run_id)
+
+    r = client.post(
+        f"/v1/research-runs/{run_id}/approve",
+        json={"expected_lock_version": _lock(client, run_id)},
+        headers={"Idempotency-Key": "approve-blocking"},
+    )
+
+    assert r.status_code == 409
 
 
 def test_resolve_review_records_decision(client):
