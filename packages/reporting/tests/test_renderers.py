@@ -5,7 +5,12 @@ import pytest
 from fathomark_core import evaluate, load_framework
 from fathomark_core.schemas import EvidenceItem, FactorProposal, ScopeSnapshot
 from fathomark_reporting import ReportModel
-from fathomark_reporting.renderers import render_html, render_json, render_markdown
+from fathomark_reporting.renderers import (
+    render_html,
+    render_json,
+    render_markdown,
+    render_pdf,
+)
 
 ROOT = Path(__file__).parents[3]
 FIXTURE = ROOT / "examples" / "fixtures" / "adbe_2026-09-03"
@@ -151,3 +156,19 @@ def test_renderer_rejects_tampered_model_hash():
 
     with pytest.raises(ValueError, match="model hash mismatch"):
         render_json(report)
+
+
+def test_pdf_renderer_uses_print_html_and_injected_chromium_launcher():
+    report = _report()
+    captured = {}
+
+    def launcher(html, executable_path):
+        captured["html"] = html
+        captured["executable_path"] = executable_path
+        return b"%PDF-recorded"
+
+    pdf = render_pdf(report, chromium_path="/opt/chromium", launcher=launcher)
+
+    assert pdf == b"%PDF-recorded"
+    assert 'data-theme="print"' in captured["html"]
+    assert captured["executable_path"] == "/opt/chromium"
