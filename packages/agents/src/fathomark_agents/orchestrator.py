@@ -8,6 +8,8 @@ error recorded; agent output failures (repairs exhausted) → needs_review;
 never silent, never fabricated.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 from collections import deque
@@ -30,6 +32,7 @@ from fathomark_storage.state_machine import TRANSITIONS, RunState
 
 from fathomark_agents.contracts import AgentError
 from fathomark_agents.financial_agent import FinancialAgent
+from fathomark_agents.red_team_agent import RedTeamAgent
 from fathomark_agents.scope_agent import ScopeAgent
 from fathomark_agents.specialists import (
     BusinessAgent,
@@ -105,7 +108,13 @@ class StepSpec:
     depends_on: tuple[str, ...]
     entry_state: RunState
     exit_state: RunState | None
-    run: Callable[[], dict]  # returns step output for the record
+    run: Callable[[], dict | StepResult]  # returns step output for the record
+
+
+@dataclass(frozen=True)
+class StepResult:
+    output: dict
+    final_state: RunState | None = None
 
 
 class _BudgetedLLM:
@@ -146,6 +155,11 @@ class Orchestrator:
         if state in _NON_EXECUTABLE:
             raise OrchestratorError(f"run {run_id} in terminal state {state}")
         self._require_orchestrator_driven(run_id)
+        if state == RunState.NEEDS_REVIEW and self.repo.has_blocking_review_issues(
+            run_id
+        ):
+            self.repo.session.commit()
+            return RunState.NEEDS_REVIEW
         if state == RunState.FAILED:
             # Re-entry point for failed runs; step records decide what re-runs.
             self.repo.advance(run_id, RunState.COLLECTING)
@@ -199,7 +213,13 @@ class Orchestrator:
             provider_version=provider_version,
         )
         try:
-            output = step.run()
+            result = step.run()
+            if isinstance(result, StepResult):
+                output = result.output
+                if result.final_state is not None:
+                    self._ensure_state(run_id, result.final_state)
+            else:
+                output = result
             if step.exit_state is not None:
                 self._ensure_state(run_id, step.exit_state)
         except AgentError as exc:
@@ -216,6 +236,8 @@ class Orchestrator:
             self.repo.fail_step(run_id, step.name, str(exc))
             return self._fail_run(run_id, f"{type(exc).__name__}: {exc}")
         self.repo.finish_step(run_id, step.name, output)
+        if isinstance(result, StepResult) and result.final_state is not None:
+            return result.final_state
         return None
 
     def _fail_run(self, run_id: str, error: str) -> RunState:
@@ -251,7 +273,7 @@ class Orchestrator:
                 ",".join(p.name for p in self.evidence_providers) or None,
                 ",".join(p.version for p in self.evidence_providers) or None,
             )
-        if step_name in _AGENT_STEP_NAMES:
+        if step_name in _AGENT_STEP_NAMES or step_name == "red_team":
             return self.llm.name, self.llm.version
         return None, None
 
@@ -272,6 +294,20 @@ class Orchestrator:
                 "scope": scope,
                 "evidence": self._evidence_index(run_id),
                 "observations": self._metric_index(run_id),
+            }
+        elif step_name == "red_team":
+            payload = {
+                "scope": scope,
+                "evidence": self._evidence_index(run_id),
+                "observations": self._metric_index(run_id),
+                "proposals": self._proposal_index(run_id),
+            }
+        elif step_name == "review_gate":
+            payload = {
+                "issues": [
+                    issue.model_dump(mode="json")
+                    for issue in self.repo.review_issues_of(run_id)
+                ]
             }
         elif step_name == "compute":
             payload = {
@@ -300,6 +336,23 @@ class Orchestrator:
                 "evidence_id": observation.evidence_id,
             }
             for observation in self.repo.metric_observations_of(run_id)
+        ]
+
+    def _proposal_index(self, run_id: str) -> list[dict]:
+        return [
+            {
+                "factor": proposal.factor,
+                "proposed_score": proposal.proposed_score,
+                "rationale": proposal.rationale,
+                "evidence_ids": proposal.evidence_ids,
+                "counter_evidence_ids": proposal.counter_evidence_ids,
+                "confidence": proposal.confidence,
+                "missing_data": proposal.missing_data,
+                "as_of_date": proposal.as_of_date.isoformat(),
+            }
+            for proposal in sorted(
+                self.repo.proposals_of(run_id), key=lambda proposal: proposal.factor
+            )
         ]
 
 
@@ -382,6 +435,24 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
 
         return agent_step
 
+    def red_team_step() -> dict:
+        issues = RedTeamAgent(orch.llm).run(
+            scope=repo.scope_of(run_id),
+            framework=orch.framework,
+            evidence=repo.evidence_of(run_id),
+            observations=repo.metric_observations_of(run_id),
+            proposals=repo.proposals_of(run_id),
+        )
+        repo.add_review_issues(run_id, issues)
+        return {"issue_count": len(issues)}
+
+    def review_gate_step() -> dict | StepResult:
+        blocking_count = sum(issue.blocking for issue in repo.review_issues_of(run_id))
+        output = {"blocking_issue_count": blocking_count}
+        if blocking_count:
+            return StepResult(output, RunState.NEEDS_REVIEW)
+        return output
+
     def compute_step() -> dict:
         snapshot = evaluate(
             framework=orch.framework,
@@ -402,9 +473,23 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
             for name, cls in _AGENT_SPECS
         ),
         StepSpec(
-            "compute",
+            "red_team",
             tuple(name for name, _ in _AGENT_SPECS),
             RunState.ANALYZING,
+            RunState.AUDITING,
+            red_team_step,
+        ),
+        StepSpec(
+            "review_gate",
+            ("red_team",),
+            RunState.AUDITING,
+            None,
+            review_gate_step,
+        ),
+        StepSpec(
+            "compute",
+            ("review_gate",),
+            RunState.AUDITING,
             RunState.DRAFT,
             compute_step,
         ),
