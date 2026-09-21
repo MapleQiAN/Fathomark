@@ -97,7 +97,7 @@
 - [x] 实现 Playwright/Chromium PDF 导出。(render_pdf：print HTML + lazy Playwright；CI 注入 launcher，真实 Chromium 由部署安装)
 - [ ] 在 Docker 镜像中固定中文字体版本。
 - [x] 实现制品 manifest 与内容哈希。(reporting 确定性 builder + artifacts 表/API 持久化与下载)
-- [ ] 增加 Markdown lint、黄金快照和格式交叉核对测试。
+- [x] 增加 Markdown lint、黄金快照和格式交叉核对测试。(reporting 合约 lint + JSON/Markdown/HTML golden hashes)
 - [ ] 增加 HTML 可访问性、响应式和视觉测试。
 - [ ] 增加 PDF 分页、空白页、字体和溢出测试。
 - [ ] 决定是否在 v1 同期交付 Vue 审核台。

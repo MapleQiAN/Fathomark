@@ -27,3 +27,7 @@ accepts an injected launcher for deterministic tests. `build_artifact_manifest`
 hashes each rendered byte payload and binds it to the report model and snapshot;
 browser-level visual regression and production font validation remain separate
 deployment checks.
+
+The reporting suite keeps golden SHA-256 hashes for JSON, Markdown and
+print-theme HTML, plus basic Markdown and HTML accessibility contracts. These
+tests catch renderer drift; they do not replace a browser visual-diff run.
