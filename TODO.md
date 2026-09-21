@@ -122,19 +122,19 @@
 - [x] 编写评分框架开发和校验指南。(docs/framework-development.md)
 - [x] 编写数据来源、许可、缓存与再分发政策。(DATA_PROVIDERS.md)
 - [x] 编写提示注入、SSRF、密钥与恶意文档安全指南。(SECURITY.md)
-- [ ] 提供不依赖付费数据的最小公开 fixture。
+- [x] 提供不依赖付费数据的最小公开 fixture。(examples/fixtures/adbe_2026-09-03：SEC 公开来源元数据 + 录制响应，CI 离线回放)
 - [ ] 提供插件认证命令与契约测试模板。
 - [x] 生成 SBOM 并加入依赖漏洞扫描。(CI 导出 CycloneDX 1.5 并上传构建产物)
-- [ ] 完成第一个公开版本的变更日志和发布检查。
+- [x] 完成第一个公开版本的变更日志和发布检查。(CHANGELOG.md + docs/release-checklist.md；签名 tag/真实部署仍需维护者执行)
 - [x] 发布打包前将 httpx 提升为 fathomark-api 运行时依赖（webhook 发送器需要）。
 - [x] 验证 fathomark-storage wheel 内 alembic 目录在干净安装后可用（migrate_db 端到端）。(CI build job)
 
 ### M5 完成标准
 
-- [ ] 新用户可用一条 Docker 命令启动系统，无需预先配置外置数据库。
-- [ ] 新用户可按快速开始完成一次从创建研究到批准报告的自包含演示。
-- [ ] CI 不需要实时网络、真实 LLM 或秘密密钥。
-- [ ] 贡献者可以按文档新增一个 Provider 或评分框架。
+- [x] 新用户可用一条 Docker 命令启动系统，无需预先配置外置数据库。(SQLite 默认 + health/Compose)
+- [x] 新用户可按快速开始完成一次从创建研究到批准报告的自包含演示。(记录 ADBE fixture)
+- [x] CI 不需要实时网络、真实 LLM 或秘密密钥。(Provider/LLM cassette + locked checks)
+- [x] 贡献者可以按文档新增一个 Provider 或评分框架。(DATA_PROVIDERS.md / MODEL_PROVIDERS.md / framework-development.md)
 
 ## 6. v1 之后
 

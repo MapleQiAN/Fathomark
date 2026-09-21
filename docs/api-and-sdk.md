@@ -39,3 +39,8 @@ The SDK is intentionally thin: it preserves API response dictionaries and
 raises `FathomarkAPIError` for non-2xx responses. Supply a configured
 `httpx.Client` when custom transport, authentication, or timeout policy is
 needed. The SDK does not calculate scores or silently retry mutations.
+
+Artifact helpers mirror the API boundary: `upload_artifact` accepts bytes and
+encodes them as base64, `list_artifacts` returns manifest-bound metadata, and
+`download_artifact` returns the verified response bytes. The SDK does not
+recompute a report manifest or silently replace an existing artifact.
