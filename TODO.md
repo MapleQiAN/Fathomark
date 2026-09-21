@@ -71,7 +71,7 @@
 - [x] 实现 Valuation Agent。(ValuationAgent：valuation)
 - [x] 实现 Governance & Risk Agent。(GovernanceRiskAgent：governance + policy_risk；Veto 候选随 Red-Team 后续)
 - [x] 实现 Market Agent。(MarketAgent：trend/liquidity/volatility/catalyst)
-- [ ] 实现 Red-Team Agent。
+- [x] 实现 Red-Team Agent。（结构化、证据截止日校验、持久化异议与阻塞审核闸门已完成；人工解决 API 待 M4）
 - [x] 实现 Agent 输出结构修复与最多两次重试。(complete_with_repairs：1 次初始 + 至多 2 次修复)
 - [ ] 实现证据冲突、数据截止日、数据新鲜度和 NR 规则。
 - [x] 数据截止日校验（本切片范围）。(collect 步骤过滤超出截止日的证据；提议引用不存在或超出截止日的证据被拒绝)

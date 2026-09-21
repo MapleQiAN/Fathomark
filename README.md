@@ -230,7 +230,7 @@ fathomark/
 1. [System design](docs/design/2026-09-18-fathomark-design.md) — architecture, data contracts, scoring governance and report formats.
 2. [Roadmap](TODO.md) — milestones, acceptance criteria and the remaining project work.
 
-M2 is done: `packages/storage` and `packages/api` implement the run state machine, SQLite/PostgreSQL storage, the headless API (create, query, cancel, retry, review, approve, result), the Python SDK in `packages/sdk`, the versioned OpenAPI contract and HMAC webhooks. M3 adds provider protocols with fake/replay/recording test doubles, a scope agent, six specialist agents with a repair loop, and a step-recorded orchestrator that drives an offline ADBE fixture from run creation to a draft snapshot. The asynchronous worker, live US-market providers, evidence normalizer, red-team audit and report renderers are still ahead — see [TODO.md](TODO.md).
+M2 is done: `packages/storage` and `packages/api` implement the run state machine, SQLite/PostgreSQL storage, the headless API (create, query, cancel, retry, review, approve, result), the Python SDK in `packages/sdk`, the versioned OpenAPI contract and HMAC webhooks. M3 adds provider protocols with fake/replay/recording test doubles, a scope agent, six specialist agents with a repair loop, evidence normalization, and a step-recorded Red-Team audit that persists typed issues and blocks drafts when an issue is blocking. The asynchronous worker, live US-market providers, broader freshness/NR policy, and report renderers are still ahead — see [TODO.md](TODO.md).
 
 ## Get the repository
 

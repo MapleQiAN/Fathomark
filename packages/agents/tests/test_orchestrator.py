@@ -10,13 +10,20 @@ from fathomark_agents.specialists import (
     BusinessAgent,
     GovernanceRiskAgent,
     GrowthAgent,
+    MarketAgent,
     ValuationAgent,
 )
 from fathomark_core import load_framework
-from fathomark_core.schemas import EvidenceItem, FactorProposal, MetricObservation
+from fathomark_core.schemas import (
+    EvidenceItem,
+    FactorProposal,
+    MetricObservation,
+    ReviewIssue,
+)
 from fathomark_providers import (
     FakeLLMProvider,
     FixtureEvidenceProvider,
+    LLMResponse,
     ProviderError,
     ProviderResult,
     ReplayLLMProvider,
@@ -27,13 +34,31 @@ from fathomark_storage.state_machine import RunState
 ROOT = Path(__file__).parents[3]
 FIXTURE = ROOT / "examples" / "fixtures" / "adbe_2026-09-03"
 EXPECTED = json.loads((FIXTURE / "expected_snapshot.json").read_text(encoding="utf-8"))
+EMPTY_AUDIT = json.dumps({"issues": []})
 
 
-def _orchestrator(repo, llm, **kwargs):
+class _AuditAwareLLMProvider:
+    """Keep legacy cassette tests offline while making audit responses explicit."""
+
+    def __init__(self, inner, audit_text=EMPTY_AUDIT):
+        self._inner = inner
+        self._audit_text = audit_text
+        self.name = inner.name
+        self.version = inner.version
+
+    def complete(self, request):
+        if request.schema_name == "review_issues" and self._audit_text is not None:
+            return LLMResponse(
+                text=self._audit_text, model=f"{self.name}-{self.version}"
+            )
+        return self._inner.complete(request)
+
+
+def _orchestrator(repo, llm, *, audit_text=EMPTY_AUDIT, **kwargs):
     return Orchestrator(
         repo,
         load_framework(ROOT / "frameworks" / "common-stock.yaml"),
-        llm=llm,
+        llm=_AuditAwareLLMProvider(llm, audit_text=audit_text),
         evidence_providers=[FixtureEvidenceProvider(FIXTURE / "provider_dump.json")],
         **kwargs,
     )
@@ -71,6 +96,8 @@ def test_full_run_reaches_draft_matching_golden(seeded_run):
         "valuation",
         "governance_risk",
         "market",
+        "red_team",
+        "review_gate",
         "compute",
     }
     assert all(s.status == "succeeded" for s in steps.values())
@@ -222,3 +249,86 @@ def test_resume_retries_only_failed_agent(seeded_run):
     assert steps["market"].attempt == 2
     assert steps["financial"].attempt == 1  # not re-run
     assert len(repo.proposals_of(run_id)) == 11  # no duplicates
+
+
+def _specialist_responses(scope, evidence):
+    cassette = json.loads((FIXTURE / "llm_cassette.json").read_text(encoding="utf-8"))
+    return [
+        cassette[prompt_key(build_prompt(scope, evidence, cls.instructions))]
+        for cls in (
+            FinancialAgent,
+            BusinessAgent,
+            GrowthAgent,
+            ValuationAgent,
+            GovernanceRiskAgent,
+            MarketAgent,
+        )
+    ]
+
+
+def _review_issue(*, blocking: bool) -> ReviewIssue:
+    return ReviewIssue(
+        category="veto_candidate",
+        factor="governance",
+        evidence_ids=["ev_001"],
+        rationale="The filing discloses an unresolved restatement.",
+        blocking=blocking,
+        as_of_date="2026-09-03",
+    )
+
+
+def test_blocking_red_team_issue_stops_before_compute_and_is_idempotent(seeded_run):
+    repo, run_id = seeded_run
+    scope = repo.scope_of(run_id)
+    evidence = [
+        EvidenceItem.model_validate(item)
+        for item in json.loads((FIXTURE / "provider_dump.json").read_text())["evidence"]
+    ]
+    llm = FakeLLMProvider(_specialist_responses(scope, evidence))
+    issue = _review_issue(blocking=True)
+    orch = _orchestrator(
+        repo,
+        llm,
+        audit_text=json.dumps({"issues": [issue.model_dump(mode="json")]}),
+    )
+
+    assert orch.execute(run_id) == RunState.NEEDS_REVIEW
+    assert repo.review_issues_of(run_id) == [issue]
+    steps = {s.step: s for s in repo.steps_of(run_id)}
+    assert steps["red_team"].status == "succeeded"
+    assert steps["review_gate"].status == "succeeded"
+    assert repo.step_record(run_id, "compute") is None
+    assert repo.latest_snapshot(run_id) is None
+
+    calls = len(llm.requests)
+    assert orch.execute(run_id) == RunState.NEEDS_REVIEW
+    assert len(llm.requests) == calls
+    assert repo.latest_snapshot(run_id) is None
+
+
+def test_non_blocking_red_team_issue_reaches_draft_and_persists_finding(seeded_run):
+    repo, run_id = seeded_run
+    scope = repo.scope_of(run_id)
+    evidence = [
+        EvidenceItem.model_validate(item)
+        for item in json.loads((FIXTURE / "provider_dump.json").read_text())["evidence"]
+    ]
+    llm = FakeLLMProvider(_specialist_responses(scope, evidence))
+    issue = _review_issue(blocking=False)
+    orch = _orchestrator(
+        repo,
+        llm,
+        audit_text=json.dumps({"issues": [issue.model_dump(mode="json")]}),
+    )
+
+    assert orch.execute(run_id) == RunState.DRAFT
+    assert repo.review_issues_of(run_id) == [issue]
+    assert repo.step_record(run_id, "red_team").output_json == {
+        "review_issue_count": 1,
+        "blocking_issue_count": 0,
+    }
+    assert repo.step_record(run_id, "review_gate").output_json == {
+        "review_issue_count": 1,
+        "blocking_issue_count": 0,
+    }
+    assert repo.step_record(run_id, "compute").status == "succeeded"
