@@ -7,6 +7,7 @@ from fathomark_core.schemas import (
     EvidenceItem,
     FactorProposal,
     MetricObservation,
+    ReviewIssue,
     ScopeSnapshot,
 )
 from fathomark_core.snapshot import ScoreSnapshot
@@ -20,6 +21,7 @@ from fathomark_storage.models import (
     MetricObservationRow,
     ResearchRunRow,
     ResearchVersionRow,
+    ReviewIssueRow,
     ScoreSnapshotRow,
     StepRunRow,
 )
@@ -290,6 +292,76 @@ class RunRepository:
             )
             for row in rows
         ]
+
+    def add_review_issues(self, run_id: str, issues: list[ReviewIssue]) -> int:
+        self.get(run_id)
+        evidence_ids = {
+            evidence.evidence_id
+            for evidence in self.session.scalars(
+                select(EvidenceItemRow).where(EvidenceItemRow.run_id == run_id)
+            )
+        }
+        existing = {
+            (issue.category, issue.factor, issue.rationale)
+            for issue in self.session.scalars(
+                select(ReviewIssueRow).where(ReviewIssueRow.run_id == run_id)
+            )
+        }
+        batch: set[tuple[str, str | None, str]] = set()
+        for issue in issues:
+            for evidence_id in issue.evidence_ids:
+                if evidence_id not in evidence_ids:
+                    raise ValueError(f"unknown evidence id: {evidence_id}")
+            key = (issue.category, issue.factor, issue.rationale)
+            if key in existing or key in batch:
+                raise ValueError(f"duplicate review issue: {key}")
+            batch.add(key)
+
+        for issue in issues:
+            self.session.add(
+                ReviewIssueRow(
+                    run_id=run_id,
+                    category=issue.category,
+                    factor=issue.factor,
+                    evidence_ids=issue.evidence_ids,
+                    rationale=issue.rationale,
+                    blocking=issue.blocking,
+                    as_of_date=issue.as_of_date,
+                )
+            )
+        self.session.flush()
+        return len(issues)
+
+    def review_issues_of(self, run_id: str) -> list[ReviewIssue]:
+        rows = self.session.scalars(
+            select(ReviewIssueRow)
+            .where(ReviewIssueRow.run_id == run_id)
+            .order_by(ReviewIssueRow.pk)
+        )
+        return [
+            ReviewIssue(
+                category=row.category,
+                factor=row.factor,
+                evidence_ids=row.evidence_ids,
+                rationale=row.rationale,
+                blocking=row.blocking,
+                as_of_date=row.as_of_date,
+            )
+            for row in rows
+        ]
+
+    def has_blocking_review_issues(self, run_id: str) -> bool:
+        return (
+            self.session.scalar(
+                select(ReviewIssueRow.pk)
+                .where(
+                    ReviewIssueRow.run_id == run_id,
+                    ReviewIssueRow.blocking.is_(True),
+                )
+                .limit(1)
+            )
+            is not None
+        )
 
     def save_draft_snapshot(self, run_id: str, snapshot: ScoreSnapshot) -> None:
         self.session.add(

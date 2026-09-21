@@ -4,6 +4,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -77,6 +78,20 @@ class MetricObservationRow(Base):
     formula: Mapped[str | None] = mapped_column(Text)
     data_date: Mapped[date]
     evidence_id: Mapped[str] = mapped_column(String(40))
+
+
+class ReviewIssueRow(Base):
+    __tablename__ = "review_issues"
+    __table_args__ = (UniqueConstraint("run_id", "category", "factor", "rationale"),)
+
+    pk: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("research_runs.id"))
+    category: Mapped[str] = mapped_column(String(40))
+    factor: Mapped[str | None] = mapped_column(String(64))
+    evidence_ids: Mapped[list] = mapped_column(JSON)
+    rationale: Mapped[str] = mapped_column(Text)
+    blocking: Mapped[bool] = mapped_column(Boolean)
+    as_of_date: Mapped[date]
 
 
 class FactorProposalRow(Base):
