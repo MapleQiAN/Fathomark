@@ -86,6 +86,11 @@ def test_evidence_normalizer_filters_cutoff_and_keeps_best_duplicate():
     assert [item.id for item in result.evidence] == ["duplicate_a", "unique"]
     assert result.dropped_after_cutoff == 1
     assert result.dropped_duplicates == 1
+    assert result.canonical_id_by_input_id == {
+        "duplicate_b": "duplicate_a",
+        "duplicate_a": "duplicate_a",
+        "unique": "unique",
+    }
 
 
 def test_evidence_normalizer_rejects_one_id_with_conflicting_content():
@@ -105,6 +110,33 @@ def test_evidence_normalizer_rejects_one_id_with_conflicting_content():
             ],
             data_cutoff=date(2026, 9, 3),
         )
+
+
+def test_metric_normalizer_converts_usd_millions_to_canonical_observation():
+    raw_type = getattr(fathomark_providers, "RawMetricObservation", None)
+    normalizer_type = getattr(fathomark_providers, "MetricNormalizer", None)
+    result_type = getattr(fathomark_providers, "ProviderResult", None)
+    assert raw_type is not None
+    assert normalizer_type is not None
+    assert result_type is not None
+
+    raw = raw_type(
+        metric="revenue",
+        value=5.87,
+        unit="USDm",
+        basis="quarterly",
+        data_date=date(2026, 5, 29),
+        evidence_id="ev_001",
+    )
+    observation = normalizer_type().normalize(raw)
+    result = result_type(evidence=(), observations=(observation,))
+
+    assert observation.metric == "revenue"
+    assert observation.value == 5_870_000
+    assert observation.unit == "USD"
+    assert observation.currency == "USD"
+    assert observation.basis == "quarterly"
+    assert result.observations == (observation,)
 
 
 class _RecordedSecTransport:

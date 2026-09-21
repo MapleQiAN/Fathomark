@@ -2,17 +2,19 @@
 
 import hashlib
 import json
+import math
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from html.parser import HTMLParser
 from pathlib import Path
+from types import MappingProxyType
 from typing import ClassVar, Protocol, runtime_checkable
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from fathomark_core.schemas import EvidenceItem, ScopeSnapshot
+from fathomark_core.schemas import EvidenceItem, MetricObservation, ScopeSnapshot
 
 from fathomark_providers.llm import ProviderError
 
@@ -36,6 +38,67 @@ class EvidenceNormalizationResult:
     evidence: tuple[EvidenceItem, ...]
     dropped_after_cutoff: int
     dropped_duplicates: int
+    canonical_id_by_input_id: Mapping[str, str]
+
+
+@dataclass(frozen=True)
+class ProviderResult:
+    """Evidence and normalized metrics returned by one data provider."""
+
+    evidence: tuple[EvidenceItem, ...]
+    observations: tuple[MetricObservation, ...]
+
+
+@dataclass(frozen=True)
+class RawMetricObservation:
+    """A provider metric before the host standardizes its unit and currency."""
+
+    metric: str
+    value: float
+    unit: str
+    basis: str
+    data_date: date
+    evidence_id: str
+    currency: str | None = None
+    formula: str | None = None
+
+
+class MetricNormalizationError(ValueError):
+    """A provider metric cannot be converted without guessing its meaning."""
+
+
+class MetricNormalizer:
+    """Normalize the deliberately small v1 USD monetary-unit vocabulary."""
+
+    _USD_MULTIPLIERS: ClassVar[dict[str, float]] = {
+        "USD": 1.0,
+        "USDm": 1_000_000.0,
+        "USD millions": 1_000_000.0,
+    }
+    _BASES: ClassVar[frozenset[str]] = frozenset({"annual", "quarterly"})
+
+    def normalize(self, raw: RawMetricObservation) -> MetricObservation:
+        if raw.basis not in self._BASES:
+            raise MetricNormalizationError(f"unsupported metric basis: {raw.basis}")
+        if not math.isfinite(raw.value):
+            raise MetricNormalizationError("metric value must be finite")
+        multiplier = self._USD_MULTIPLIERS.get(raw.unit)
+        if multiplier is None:
+            raise MetricNormalizationError(f"unsupported metric unit: {raw.unit}")
+        if raw.currency not in (None, "USD"):
+            raise MetricNormalizationError(
+                f"currency {raw.currency!r} conflicts with USD unit"
+            )
+        return MetricObservation(
+            metric=raw.metric,
+            value=raw.value * multiplier,
+            unit="USD",
+            currency="USD",
+            basis=raw.basis,
+            formula=raw.formula,
+            data_date=raw.data_date,
+            evidence_id=raw.evidence_id,
+        )
 
 
 class EvidenceNormalizer:
@@ -56,6 +119,7 @@ class EvidenceNormalizer:
     ) -> EvidenceNormalizationResult:
         by_content_hash: dict[str, EvidenceItem] = {}
         hashes_by_id: dict[str, str] = {}
+        usable: list[EvidenceItem] = []
         dropped_after_cutoff = 0
         dropped_duplicates = 0
 
@@ -69,6 +133,7 @@ class EvidenceNormalizer:
                 raise EvidenceNormalizationError(
                     f"evidence id {item.id!r} has conflicting content hashes"
                 )
+            usable.append(item)
 
             existing = by_content_hash.get(item.content_hash)
             if existing is None:
@@ -83,6 +148,9 @@ class EvidenceNormalizer:
             evidence=tuple(sorted(by_content_hash.values(), key=lambda item: item.id)),
             dropped_after_cutoff=dropped_after_cutoff,
             dropped_duplicates=dropped_duplicates,
+            canonical_id_by_input_id=MappingProxyType(
+                {item.id: by_content_hash[item.content_hash].id for item in usable}
+            ),
         )
 
     def _preference_key(self, item: EvidenceItem) -> tuple:

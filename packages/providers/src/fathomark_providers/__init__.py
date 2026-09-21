@@ -6,6 +6,10 @@ from fathomark_providers.evidence import (
     EvidenceNormalizer,
     EvidenceProvider,
     FixtureEvidenceProvider,
+    MetricNormalizationError,
+    MetricNormalizer,
+    ProviderResult,
+    RawMetricObservation,
     SecEdgarEvidenceProvider,
 )
 from fathomark_providers.fake import (
@@ -31,7 +35,11 @@ __all__ = [
     "LLMProvider",
     "LLMRequest",
     "LLMResponse",
+    "MetricNormalizationError",
+    "MetricNormalizer",
     "ProviderError",
+    "ProviderResult",
+    "RawMetricObservation",
     "RecordingLLMProvider",
     "ReplayLLMProvider",
     "SecEdgarEvidenceProvider",
