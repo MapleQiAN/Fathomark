@@ -1,6 +1,8 @@
 """Provider protocols and offline test doubles."""
 
 from fathomark_providers.evidence import (
+    CompanyIRDocument,
+    CompanyIREvidenceProvider,
     EvidenceNormalizationError,
     EvidenceNormalizationResult,
     EvidenceNormalizer,
@@ -33,6 +35,8 @@ from fathomark_providers.remote_llm import (
 
 __all__ = [
     "AnthropicProvider",
+    "CompanyIRDocument",
+    "CompanyIREvidenceProvider",
     "EvidenceNormalizationError",
     "EvidenceNormalizationResult",
     "EvidenceNormalizer",

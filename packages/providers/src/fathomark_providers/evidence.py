@@ -4,15 +4,15 @@ import hashlib
 import json
 import math
 import re
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar, Protocol, runtime_checkable
-from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.parse import quote, urlsplit
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 from fathomark_core.schemas import EvidenceItem, MetricObservation, ScopeSnapshot
 
@@ -219,15 +219,137 @@ class FixtureEvidenceProvider:
         )
 
 
+@dataclass(frozen=True)
+class CompanyIRDocument:
+    """Operator-supplied metadata for one public investor-relations document."""
+
+    id: str
+    source_name: str
+    url: str
+    published_date: date
+    data_period_end: date | None = None
+    grade: str = "A"
+
+
+class CompanyIREvidenceProvider:
+    """Fetch explicitly configured, allowlisted company IR documents.
+
+    IR pages rarely expose a universal machine-readable date contract, so the
+    host requires operators to provide document metadata rather than guessing
+    dates from page prose. URLs and redirects are restricted to the configured
+    HTTPS host allowlist to keep this provider from becoming an SSRF proxy.
+    """
+
+    name = "company-ir"
+    version = "1.0.0"
+
+    def __init__(
+        self,
+        *,
+        documents_by_symbol: Mapping[str, Sequence[CompanyIRDocument]],
+        user_agent: str,
+        allowed_hosts: set[str] | frozenset[str],
+        transport: "_SecTransport | None" = None,
+        now: Callable[[], datetime] = lambda: datetime.now(UTC),
+        timeout_seconds: float = 15.0,
+    ):
+        if not user_agent.strip():
+            raise ValueError("company IR user_agent must not be empty")
+        self._allowed_hosts = frozenset(host.lower() for host in allowed_hosts)
+        if not self._allowed_hosts:
+            raise ValueError("company IR allowed_hosts must not be empty")
+        self._documents = {
+            symbol.upper(): tuple(documents)
+            for symbol, documents in documents_by_symbol.items()
+        }
+        self._headers = {"User-Agent": user_agent, "Accept": "text/html"}
+        self._transport = transport or _UrlLibSecTransport(
+            timeout_seconds, allowed_hosts=self._allowed_hosts
+        )
+        self._now = now
+
+    def fetch(self, scope: ScopeSnapshot) -> ProviderResult:
+        documents = self._documents.get(scope.symbol.upper(), ())
+        if not documents:
+            raise ProviderError(
+                f"no IR documents configured for symbol {scope.symbol}",
+                retriable=False,
+            )
+        evidence: list[EvidenceItem] = []
+        for document in documents:
+            parsed = urlsplit(document.url)
+            if parsed.scheme != "https" or parsed.hostname is None:
+                raise ProviderError(
+                    f"IR URL must use HTTPS: {document.url}", retriable=False
+                )
+            if parsed.hostname.lower() not in self._allowed_hosts:
+                raise ProviderError(
+                    f"IR URL host is not allowlisted: {parsed.hostname}",
+                    retriable=False,
+                )
+            try:
+                html = self._transport.get_text(document.url, headers=self._headers)
+            except ProviderError:
+                raise
+            except (OSError, TypeError, ValueError) as exc:
+                raise ProviderError(
+                    f"company IR request failed: {exc}", retriable=True
+                ) from exc
+            parser = _HtmlTextExtractor()
+            parser.feed(html)
+            excerpt = parser.text()
+            if not excerpt:
+                raise ProviderError(
+                    f"company IR document is empty: {document.id}", retriable=False
+                )
+            content_hash = (
+                "sha256:" + hashlib.sha256(excerpt.encode("utf-8")).hexdigest()
+            )
+            evidence.append(
+                EvidenceItem(
+                    id=document.id,
+                    source_name=document.source_name,
+                    source_class="ir",
+                    url=document.url,
+                    published_date=document.published_date,
+                    data_period_end=document.data_period_end,
+                    accessed_at=self._now(),
+                    grade=document.grade,
+                    content_hash=content_hash,
+                    excerpt=excerpt[:4000],
+                )
+            )
+        return ProviderResult(evidence=tuple(evidence), observations=())
+
+
 class _SecTransport(Protocol):
     def get_json(self, url: str, *, headers: dict[str, str]) -> object: ...
 
     def get_text(self, url: str, *, headers: dict[str, str]) -> str: ...
 
 
+class _AllowlistedRedirectHandler(HTTPRedirectHandler):
+    def __init__(self, allowed_hosts: frozenset[str]):
+        self._allowed_hosts = allowed_hosts
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        parsed = urlsplit(newurl)
+        if parsed.scheme != "https" or parsed.hostname is None:
+            raise ProviderError("redirected URL is not HTTPS", retriable=False)
+        if parsed.hostname.lower() not in self._allowed_hosts:
+            raise ProviderError(
+                f"redirected URL host is not allowlisted: {parsed.hostname}",
+                retriable=False,
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 class _UrlLibSecTransport:
-    def __init__(self, timeout_seconds: float):
+    def __init__(
+        self, timeout_seconds: float, *, allowed_hosts: frozenset[str] | None = None
+    ):
         self._timeout_seconds = timeout_seconds
+        self._allowed_hosts = allowed_hosts
 
     def get_json(self, url: str, *, headers: dict[str, str]) -> object:
         return json.loads(self._get(url, headers=headers))
@@ -237,7 +359,17 @@ class _UrlLibSecTransport:
 
     def _get(self, url: str, *, headers: dict[str, str]) -> str:
         request = Request(url, headers=headers)
-        with urlopen(request, timeout=self._timeout_seconds) as response:
+        opener = (
+            build_opener(_AllowlistedRedirectHandler(self._allowed_hosts))
+            if self._allowed_hosts is not None
+            else None
+        )
+        response_context = (
+            opener.open(request, timeout=self._timeout_seconds)
+            if opener is not None
+            else urlopen(request, timeout=self._timeout_seconds)
+        )
+        with response_context as response:
             return response.read().decode("utf-8", errors="replace")
 
 
