@@ -69,7 +69,7 @@
   - 注：全部 11 个因子由真实 Agent 覆盖（离线 cassette 回放）；FixtureReplayAgent 已删除。cassette 由 `scripts/build_cassette.py` 确定性重建。
 - [x] 实现 Growth Agent。(GrowthAgent：growth_sustainability)
 - [x] 实现 Valuation Agent。(ValuationAgent：valuation)
-- [x] 实现 Governance & Risk Agent。(GovernanceRiskAgent：governance + policy_risk；Veto 候选随 Red-Team 后续)
+- [x] 实现 Governance & Risk Agent。(GovernanceRiskAgent：governance + policy_risk；Veto 候选由 Red-Team 审计保留并进入审核闸门)
 - [x] 实现 Market Agent。(MarketAgent：trend/liquidity/volatility/catalyst)
 - [x] 实现 Red-Team Agent。（结构化、证据截止日校验、持久化异议与阻塞审核闸门已完成；人工解决 API 待 M4）
 - [x] 实现 Agent 输出结构修复与最多两次重试。(complete_with_repairs：1 次初始 + 至多 2 次修复)
