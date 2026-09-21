@@ -8,8 +8,11 @@ from fathomark_core.schemas import (
     FactorProposal,
     MetricObservation,
     ProposalError,
+    ReviewIssue,
+    ReviewIssueError,
     ScopeSnapshot,
     validate_proposal,
+    validate_review_issue,
 )
 
 FRAMEWORK = load_framework(
@@ -48,6 +51,18 @@ def _proposal(**kw) -> FactorProposal:
         "as_of_date": date(2026, 9, 18),
     }
     return FactorProposal(**(base | kw))
+
+
+def _review_issue(**kw) -> ReviewIssue:
+    base = {
+        "category": "veto_candidate",
+        "factor": "governance",
+        "evidence_ids": ["ev_001"],
+        "rationale": "The filing discloses an unresolved restatement.",
+        "blocking": True,
+        "as_of_date": date(2026, 9, 3),
+    }
+    return ReviewIssue(**(base | kw))
 
 
 def test_scope_snapshot_and_evidence_round_trip():
@@ -164,6 +179,52 @@ def test_on_step_score_outside_range_rejected():
     with pytest.raises(ProposalError, match="scale"):
         validate_proposal(
             _proposal(proposed_score=10.5),
+            framework=FRAMEWORK,
+            evidence=EVIDENCE,
+            data_cutoff=CUTOFF,
+        )
+
+
+def test_valid_review_issue_passes():
+    validate_review_issue(
+        _review_issue(), framework=FRAMEWORK, evidence=EVIDENCE, data_cutoff=CUTOFF
+    )
+
+
+def test_review_issue_unknown_evidence_rejected():
+    with pytest.raises(ReviewIssueError, match="unknown evidence"):
+        validate_review_issue(
+            _review_issue(evidence_ids=["ev_missing"]),
+            framework=FRAMEWORK,
+            evidence=EVIDENCE,
+            data_cutoff=CUTOFF,
+        )
+
+
+def test_review_issue_unknown_factor_rejected():
+    with pytest.raises(ReviewIssueError, match="unknown factor"):
+        validate_review_issue(
+            _review_issue(factor="vibes"),
+            framework=FRAMEWORK,
+            evidence=EVIDENCE,
+            data_cutoff=CUTOFF,
+        )
+
+
+def test_review_issue_after_cutoff_rejected():
+    with pytest.raises(ReviewIssueError, match="cutoff"):
+        validate_review_issue(
+            _review_issue(as_of_date=date(2026, 9, 19)),
+            framework=FRAMEWORK,
+            evidence=EVIDENCE,
+            data_cutoff=CUTOFF,
+        )
+
+
+def test_review_issue_empty_rationale_rejected():
+    with pytest.raises(ReviewIssueError, match="rationale"):
+        validate_review_issue(
+            _review_issue(rationale="  "),
             framework=FRAMEWORK,
             evidence=EVIDENCE,
             data_cutoff=CUTOFF,

@@ -12,6 +12,10 @@ class ProposalError(ValueError):
     """Raised when a FactorProposal violates the scoring contract."""
 
 
+class ReviewIssueError(ValueError):
+    """Raised when a Red-Team review issue violates the audit contract."""
+
+
 class ScopeSnapshot(BaseModel):
     model_config = {"frozen": True}
 
@@ -65,6 +69,29 @@ class FactorProposal(BaseModel):
     as_of_date: date
 
 
+ReviewIssueCategory = Literal[
+    "unsupported_claim",
+    "evidence_conflict",
+    "date_or_currency_conflict",
+    "duplicate_counting",
+    "valuation_cherry_picking",
+    "missing_counter_evidence",
+    "veto_candidate",
+    "data_gap",
+]
+
+
+class ReviewIssue(BaseModel):
+    model_config = {"frozen": True}
+
+    category: ReviewIssueCategory
+    factor: str | None = None
+    evidence_ids: list[str] = Field(default_factory=list)
+    rationale: str
+    blocking: bool
+    as_of_date: date
+
+
 def validate_proposal(
     proposal: FactorProposal,
     *,
@@ -94,5 +121,29 @@ def validate_proposal(
             raise ProposalError(f"unknown evidence id: {ev_id}")
         if evidence[ev_id] > data_cutoff:
             raise ProposalError(
+                f"evidence {ev_id} published after cutoff {data_cutoff}"
+            )
+
+
+def validate_review_issue(
+    issue: ReviewIssue,
+    *,
+    framework: Framework,
+    evidence: dict[str, date],
+    data_cutoff: date,
+) -> None:
+    if issue.factor is not None and issue.factor not in framework.factors:
+        raise ReviewIssueError(f"unknown factor: {issue.factor}")
+    if not issue.rationale.strip():
+        raise ReviewIssueError("rationale must not be empty")
+    if issue.as_of_date > data_cutoff:
+        raise ReviewIssueError(
+            f"review issue as_of_date {issue.as_of_date} beyond cutoff {data_cutoff}"
+        )
+    for ev_id in issue.evidence_ids:
+        if ev_id not in evidence:
+            raise ReviewIssueError(f"unknown evidence id: {ev_id}")
+        if evidence[ev_id] > data_cutoff:
+            raise ReviewIssueError(
                 f"evidence {ev_id} published after cutoff {data_cutoff}"
             )
