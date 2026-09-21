@@ -62,7 +62,8 @@
 - [x] 实现 SEC EDGAR/XBRL Provider。（10-K/10-Q 证据采集；companyfacts 中收入、净利润、经营现金流的可追溯 USD 单期指标。）
 - [x] 实现公司 IR 文档 Provider。(CompanyIREvidenceProvider：显式文档元数据 + HTTPS host allowlist + redirect guard)
 - [x] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。(MarketDataProvider + StooqMarketDataProvider；录制 transport 契约测试，实时可用性与授权仍由部署方确认)
-- [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。（证据截止日过滤、内容去重、冲突 ID 拒绝，以及 SEC XBRL USD 指标的日期/单位/币种标准化已实现；通用多币种和非 XBRL 口径仍待补。）
+- [x] 实现 Evidence Normalizer 基础范围：去重、冲突 ID 拒绝、截止日/新鲜度过滤，以及 SEC XBRL USD 指标标准化。
+- [ ] 补齐通用多币种和非 XBRL 口径的日期/单位/币种标准化。
 - [x] 实现 Scope Agent。(packages/agents ScopeAgent)
 - [x] 实现 Business Agent。(BusinessAgent：business_moat，cassette 回放)
 - [x] 实现 Financial Agent。(financial_health + earnings_quality，录制 cassette 回放)
