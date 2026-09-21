@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -156,6 +157,43 @@ def test_renderer_rejects_tampered_model_hash():
 
     with pytest.raises(ValueError, match="model hash mismatch"):
         render_json(report)
+
+
+def test_report_formats_match_golden_hashes_and_cross_format_identity():
+    report = _report()
+    outputs = {
+        "json": render_json(report),
+        "markdown": render_markdown(report),
+        "html": render_html(report, theme="print"),
+    }
+
+    expected_hashes = {
+        "json": "sha256:4b6b4efd8656cd1bf8ae873de8bec499aa92fdf652a6e3fea0bb3c52218f8f51",
+        "markdown": "sha256:c218c2631a147f2532fd553764a923e1145d8b88e55d849086c9f293059a550a",
+        "html": "sha256:41b8e07c4b3eda274712f77a32d23027b777835e0908f7a8d7edbdff62a7dda0",
+    }
+    assert {
+        name: "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
+        for name, value in outputs.items()
+    } == expected_hashes
+    for evidence in report.evidence:
+        assert all(evidence.id in value for value in outputs.values())
+    assert all(report.model_hash in value for value in outputs.values())
+    assert all(report.snapshot_hash in value for value in outputs.values())
+
+
+def test_markdown_and_html_renderers_meet_basic_format_and_accessibility_contract():
+    report = _report()
+    markdown = render_markdown(report)
+    html = render_html(report, theme="print")
+
+    assert all(not line.endswith(" ") for line in markdown.splitlines())
+    assert markdown.count("\n# ") == 1
+    assert 'lang="en"' in html
+    assert '<meta name="viewport"' in html
+    assert html.count('<th scope="col">') >= 7
+    assert "<link href=" not in html
+    assert "<script src=" not in html
 
 
 def test_pdf_renderer_uses_print_html_and_injected_chromium_launcher():
