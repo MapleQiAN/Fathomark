@@ -6,5 +6,13 @@ from fathomark_reporting.model import (
     ReportLens,
     ReportModel,
 )
+from fathomark_reporting.renderers import render_json, render_markdown
 
-__all__ = ["ReportEvidence", "ReportFactor", "ReportLens", "ReportModel"]
+__all__ = [
+    "ReportEvidence",
+    "ReportFactor",
+    "ReportLens",
+    "ReportModel",
+    "render_json",
+    "render_markdown",
+]
