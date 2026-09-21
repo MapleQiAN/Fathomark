@@ -79,6 +79,20 @@ class MetricObservationRow(Base):
     evidence_id: Mapped[str] = mapped_column(String(40))
 
 
+class ReviewIssueRow(Base):
+    __tablename__ = "review_issues"
+    __table_args__ = (UniqueConstraint("run_id", "category", "factor", "rationale"),)
+
+    pk: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("research_runs.id"))
+    category: Mapped[str] = mapped_column(String(40))
+    factor: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    evidence_ids: Mapped[list] = mapped_column(JSON)
+    rationale: Mapped[str] = mapped_column(Text)
+    blocking: Mapped[bool]
+    as_of_date: Mapped[date]
+
+
 class FactorProposalRow(Base):
     __tablename__ = "factor_proposals"
     __table_args__ = (UniqueConstraint("run_id", "factor"),)

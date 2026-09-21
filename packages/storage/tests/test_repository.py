@@ -2,7 +2,12 @@
 from datetime import UTC, date, datetime
 
 import pytest
-from fathomark_core.schemas import EvidenceItem, MetricObservation, ScopeSnapshot
+from fathomark_core.schemas import (
+    EvidenceItem,
+    MetricObservation,
+    ReviewIssue,
+    ScopeSnapshot,
+)
 from fathomark_storage import create_session_factory, init_db
 from fathomark_storage.models import MetricObservationRow
 from fathomark_storage.repository import RunRepository
@@ -82,6 +87,17 @@ def _observation(evidence_id: str = "ev_metric") -> MetricObservation:
     )
 
 
+def _review_issue(evidence_id: str = "ev_metric") -> ReviewIssue:
+    return ReviewIssue(
+        category="veto_candidate",
+        factor="governance",
+        evidence_ids=[evidence_id],
+        rationale="The filing discloses an unresolved restatement.",
+        blocking=True,
+        as_of_date=date(2026, 9, 3),
+    )
+
+
 def test_metric_observation_round_trips_with_its_evidence(repo):
     run, _ = repo.create_run(idem_key="metric-roundtrip", scope=SCOPE)
     repo.add_evidence(run.id, [_evidence()])
@@ -89,6 +105,35 @@ def test_metric_observation_round_trips_with_its_evidence(repo):
     repo.add_metric_observations(run.id, [_observation()])
 
     assert repo.metric_observations_of(run.id) == [_observation()]
+
+
+def test_review_issue_round_trips_and_reports_blocking(repo):
+    run, _ = repo.create_run(idem_key="review-roundtrip", scope=SCOPE)
+    repo.add_evidence(run.id, [_evidence()])
+
+    repo.add_review_issues(run.id, [_review_issue()])
+
+    assert repo.review_issues_of(run.id) == [_review_issue()]
+    assert repo.has_blocking_review_issues(run.id) is True
+
+
+def test_review_issue_rejects_unknown_evidence_without_mutating(repo):
+    run, _ = repo.create_run(idem_key="review-unknown", scope=SCOPE)
+
+    with pytest.raises(ValueError, match="unknown evidence id"):
+        repo.add_review_issues(run.id, [_review_issue()])
+
+    assert repo.review_issues_of(run.id) == []
+
+
+def test_review_issue_rejects_duplicate_batch_without_mutating(repo):
+    run, _ = repo.create_run(idem_key="review-duplicate", scope=SCOPE)
+    repo.add_evidence(run.id, [_evidence()])
+
+    with pytest.raises(ValueError, match="duplicate review issue"):
+        repo.add_review_issues(run.id, [_review_issue(), _review_issue()])
+
+    assert repo.review_issues_of(run.id) == []
 
 
 def test_sqlite_rejects_metric_observation_without_its_evidence(repo):
