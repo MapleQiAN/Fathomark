@@ -4,7 +4,7 @@ from pathlib import Path
 from fathomark_core import evaluate, load_framework
 from fathomark_core.schemas import EvidenceItem, FactorProposal, ScopeSnapshot
 from fathomark_reporting import ReportModel
-from fathomark_reporting.renderers import render_json, render_markdown
+from fathomark_reporting.renderers import render_html, render_json, render_markdown
 
 ROOT = Path(__file__).parents[3]
 FIXTURE = ROOT / "examples" / "fixtures" / "adbe_2026-09-03"
@@ -52,3 +52,22 @@ def test_markdown_renderer_has_metadata_draft_marker_and_evidence():
     assert "DRAFT — NOT APPROVED" in rendered
     for item in report.evidence:
         assert item.id in rendered
+
+
+def test_html_renderer_is_escaped_self_contained_and_accessible():
+    report = _report()
+    unsafe = report.factors[0].model_copy(
+        update={"rationale": "<script>alert('x')</script>"}
+    )
+    report = report.model_copy(update={"factors": [unsafe, *report.factors[1:]]})
+
+    rendered = render_html(report)
+
+    assert "<title>ADBE Research Report</title>" in rendered
+    assert '<th scope="col">Factor</th>' in rendered
+    assert "DRAFT — NOT APPROVED" in rendered
+    assert report.model_hash in rendered
+    assert "<script>alert('x')</script>" not in rendered
+    assert "&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;" in rendered
+    assert "<script src=" not in rendered
+    assert '<link href="http' not in rendered

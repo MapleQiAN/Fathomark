@@ -88,10 +88,10 @@
 
 - [ ] 实现人工接受、修改、退回和批准记录。
 - [ ] 修改建议分时强制填写理由。
-- [ ] 定义统一 `ReportModel`。
-- [ ] 实现机器 JSON 报告。
-- [ ] 实现 GFM Markdown 渲染器和 YAML metadata。
-- [ ] 实现专业 HTML 模板、证据脚注和离线单文件导出。
+- [x] 定义统一 `ReportModel`。(由同一模型驱动 JSON、Markdown 与 HTML)
+- [x] 实现机器 JSON 报告。
+- [x] 实现 GFM Markdown 渲染器和 YAML metadata。
+- [x] 实现专业 HTML 模板、证据脚注和离线单文件导出。(基础自包含模板；图表与主题仍待补)
 - [ ] 实现因子图、估值敏感性矩阵和评分变化 SVG。
 - [ ] 实现浅色、深色与打印主题。
 - [ ] 实现 Playwright/Chromium PDF 导出。
