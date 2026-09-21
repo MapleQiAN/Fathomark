@@ -112,7 +112,7 @@
 ## 5. M5：自包含 Demo 与开源发布
 
 - [x] 完成不依赖外置数据库的本地单镜像启动，默认使用 SQLite。(Docker/Compose + 应用数据目录；完整黄金路径仍需接入 worker/provider)
-- [ ] 用固定公开 fixture 或录制 Provider 响应展示完整黄金路径。
+- [x] 用固定公开 fixture 或录制 Provider 响应展示完整黄金路径。(Compose opt-in ADBE cassette；创建→execute→approve 已有 API e2e)
 - [ ] 提供 PostgreSQL 作为可选的服务化部署示例。
 - [x] 编写五分钟快速开始。(docs/quickstart.md)
 - [ ] 编写 API、Python SDK 和 CLI 文档。
