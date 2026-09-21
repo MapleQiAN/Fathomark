@@ -49,6 +49,10 @@ class OrchestratorError(RuntimeError):
     """Run cannot be executed from its current state (route maps to 409)."""
 
 
+class ReviewRequiredError(RuntimeError):
+    """A data gap requires review without being a provider outage."""
+
+
 # Canonical pipeline order for the "already past this state" resume fallback.
 _ORDER = [
     RunState.CREATED,
@@ -298,6 +302,11 @@ class Orchestrator:
             self.repo.get(run_id).error = str(exc)
             self.repo.advance(run_id, RunState.NEEDS_REVIEW)
             return RunState.NEEDS_REVIEW
+        except ReviewRequiredError as exc:
+            self.repo.fail_step(run_id, step.name, str(exc))
+            self.repo.get(run_id).error = str(exc)
+            self._ensure_state(run_id, RunState.NEEDS_REVIEW)
+            return RunState.NEEDS_REVIEW
         except ProviderError as exc:
             self.repo.fail_step(run_id, step.name, str(exc))
             return self._fail_run(run_id, str(exc))
@@ -471,8 +480,8 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
             freshness=orch.framework.freshness,
         )
         if not normalized.evidence:
-            raise ProviderError(
-                "no usable evidence after data_cutoff filter", retriable=False
+            raise ReviewRequiredError(
+                "no usable evidence after data_cutoff or freshness filter"
             )
         canonical_observations = []
         for observation in observations:

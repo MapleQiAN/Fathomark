@@ -39,3 +39,9 @@ def test_needs_review_resolves_to_draft():
 def test_needs_review_reenters_analyzing_for_step_retry():
     # Re-execution of a blocked step after fixing the provider.
     assert transition(RunState.NEEDS_REVIEW, RunState.ANALYZING) == RunState.ANALYZING
+
+
+def test_collecting_can_route_to_needs_review_for_a_data_gap():
+    assert (
+        transition(RunState.COLLECTING, RunState.NEEDS_REVIEW) == RunState.NEEDS_REVIEW
+    )

@@ -41,8 +41,6 @@ class EvidenceNormalizationResult:
     stale_evidence_ids: tuple[str, ...]
     dropped_duplicates: int
     canonical_id_by_input_id: Mapping[str, str]
-    dropped_stale: int = 0
-    stale_evidence_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -72,12 +70,50 @@ class MetricNormalizationError(ValueError):
 
 
 class MetricNormalizer:
-    """Normalize the deliberately small v1 USD monetary-unit vocabulary."""
+    """Normalize explicit currency and non-XBRL unit aliases.
 
-    _USD_MULTIPLIERS: ClassVar[dict[str, float]] = {
-        "USD": 1.0,
-        "USDm": 1_000_000.0,
-        "USD millions": 1_000_000.0,
+    Currency values are scaled to base currency units but are never converted
+    between currencies. An FX rate is an evidence-backed observation and must
+    be supplied by a later, explicit conversion step rather than guessed here.
+    """
+
+    _UNIT_ALIASES: ClassVar[dict[str, tuple[str, float, str | None]]] = {
+        "USD": ("USD", 1.0, "USD"),
+        "USDm": ("USD", 1_000_000.0, "USD"),
+        "USD million": ("USD", 1_000_000.0, "USD"),
+        "USD millions": ("USD", 1_000_000.0, "USD"),
+        "EUR": ("EUR", 1.0, "EUR"),
+        "EURm": ("EUR", 1_000_000.0, "EUR"),
+        "EUR million": ("EUR", 1_000_000.0, "EUR"),
+        "EUR millions": ("EUR", 1_000_000.0, "EUR"),
+        "GBP": ("GBP", 1.0, "GBP"),
+        "GBPm": ("GBP", 1_000_000.0, "GBP"),
+        "GBP million": ("GBP", 1_000_000.0, "GBP"),
+        "GBP millions": ("GBP", 1_000_000.0, "GBP"),
+        "JPY": ("JPY", 1.0, "JPY"),
+        "JPYm": ("JPY", 1_000_000.0, "JPY"),
+        "JPY million": ("JPY", 1_000_000.0, "JPY"),
+        "JPY millions": ("JPY", 1_000_000.0, "JPY"),
+        "CNY": ("CNY", 1.0, "CNY"),
+        "CNYm": ("CNY", 1_000_000.0, "CNY"),
+        "CNY million": ("CNY", 1_000_000.0, "CNY"),
+        "CNY millions": ("CNY", 1_000_000.0, "CNY"),
+        "HKD": ("HKD", 1.0, "HKD"),
+        "HKDm": ("HKD", 1_000_000.0, "HKD"),
+        "HKD million": ("HKD", 1_000_000.0, "HKD"),
+        "HKD millions": ("HKD", 1_000_000.0, "HKD"),
+        "shares": ("shares", 1.0, None),
+        "shares_m": ("shares", 1_000_000.0, None),
+        "million shares": ("shares", 1_000_000.0, None),
+        "count": ("count", 1.0, None),
+        "counts": ("count", 1.0, None),
+        "units": ("count", 1.0, None),
+        "%": ("percent", 1.0, None),
+        "percent": ("percent", 1.0, None),
+        "bps": ("bps", 1.0, None),
+        "basis_points": ("bps", 1.0, None),
+        "ratio": ("ratio", 1.0, None),
+        "x": ("ratio", 1.0, None),
     }
     _BASES: ClassVar[frozenset[str]] = frozenset({"annual", "quarterly"})
 
@@ -86,18 +122,28 @@ class MetricNormalizer:
             raise MetricNormalizationError(f"unsupported metric basis: {raw.basis}")
         if not math.isfinite(raw.value):
             raise MetricNormalizationError("metric value must be finite")
-        multiplier = self._USD_MULTIPLIERS.get(raw.unit)
-        if multiplier is None:
+        if not isinstance(raw.data_date, date):
+            raise MetricNormalizationError("metric data_date must be a date")
+        alias = self._UNIT_ALIASES.get(raw.unit)
+        if alias is None:
             raise MetricNormalizationError(f"unsupported metric unit: {raw.unit}")
-        if raw.currency not in (None, "USD"):
+        canonical_unit, multiplier, inferred_currency = alias
+        if inferred_currency is None and raw.currency is not None:
             raise MetricNormalizationError(
-                f"currency {raw.currency!r} conflicts with USD unit"
+                f"currency {raw.currency!r} conflicts with {raw.unit} unit"
+            )
+        if inferred_currency is not None and raw.currency not in (
+            None,
+            inferred_currency,
+        ):
+            raise MetricNormalizationError(
+                f"currency {raw.currency!r} conflicts with {raw.unit} unit"
             )
         return MetricObservation(
             metric=raw.metric,
             value=raw.value * multiplier,
-            unit="USD",
-            currency="USD",
+            unit=canonical_unit,
+            currency=inferred_currency,
             basis=raw.basis,
             formula=raw.formula,
             data_date=raw.data_date,
@@ -128,10 +174,8 @@ class EvidenceNormalizer:
         usable: list[EvidenceItem] = []
         dropped_after_cutoff = 0
         dropped_stale = 0
-        stale_evidence_ids: list[str] = []
-        dropped_duplicates = 0
-        dropped_stale = 0
         stale_evidence_ids: set[str] = set()
+        dropped_duplicates = 0
 
         for item in items:
             if item.published_date > data_cutoff:
@@ -141,22 +185,15 @@ class EvidenceNormalizer:
             if (
                 research_date is not None
                 and max_age_days is not None
-                and item.published_date < research_date - timedelta(days=max_age_days)
+                and (
+                    item.published_date > research_date
+                    or item.published_date
+                    < research_date - timedelta(days=max_age_days)
+                )
             ):
                 dropped_stale += 1
-                stale_evidence_ids.append(item.id)
+                stale_evidence_ids.add(item.id)
                 continue
-
-            if research_date is not None and freshness is not None:
-                policy = freshness.get(item.source_class)
-                max_age = policy.get("max_age_days") if policy else None
-                if isinstance(max_age, (int, float)) and (
-                    item.published_date > research_date
-                    or (research_date - item.published_date).days > max_age
-                ):
-                    dropped_stale += 1
-                    stale_evidence_ids.add(item.id)
-                    continue
 
             existing_hash = hashes_by_id.setdefault(item.id, item.content_hash)
             if existing_hash != item.content_hash:
@@ -178,13 +215,11 @@ class EvidenceNormalizer:
             evidence=tuple(sorted(by_content_hash.values(), key=lambda item: item.id)),
             dropped_after_cutoff=dropped_after_cutoff,
             dropped_stale=dropped_stale,
-            stale_evidence_ids=tuple(stale_evidence_ids),
+            stale_evidence_ids=tuple(sorted(stale_evidence_ids)),
             dropped_duplicates=dropped_duplicates,
             canonical_id_by_input_id=MappingProxyType(
                 {item.id: by_content_hash[item.content_hash].id for item in usable}
             ),
-            dropped_stale=dropped_stale,
-            stale_evidence_ids=tuple(sorted(stale_evidence_ids)),
         )
 
     def _max_age_days(

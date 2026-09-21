@@ -230,7 +230,7 @@ fathomark/
 1. [系统设计](docs/design/2026-09-18-fathomark-design.md)——架构、数据契约、评分治理和报告格式。
 2. [路线图](TODO.md)——里程碑、验收标准和项目剩余工作。
 
-M2 已完成：`packages/storage` 与 `packages/api` 实现了运行状态机、SQLite/PostgreSQL 存储、无界面 API（创建、查询、取消、重试、审阅、批准、结果）、`packages/sdk` 中的 Python SDK、版本化 OpenAPI 契约与 HMAC Webhook。M3 新增 Provider 协议及 Fake/Replay/Recording 测试替身、托管 LLM 适配器、SEC/IR/行情数据适配器、Scope 智能体、带修复重试的 6 个专业智能体、按截止日/新鲜度过滤的证据标准化、可审计的 LLM 用量预算，以及记录步骤的 Red-Team 审计：结构化异议会持久化，阻塞异议会阻止草稿生成。异步 worker、实时来源可用性与授权仍需部署方验证、自动证据不足 NR 路由与报告渲染器仍在后续计划中——参见 [TODO.md](TODO.md)。
+M2 已完成：`packages/storage` 与 `packages/api` 实现了运行状态机、SQLite/PostgreSQL 存储、无界面 API（创建、查询、取消、重试、审阅、批准、结果）、`packages/sdk` 中的 Python SDK、版本化 OpenAPI 契约与 HMAC Webhook。M3 新增 Provider 协议及 Fake/Replay/Recording 测试替身、托管 LLM 适配器、SEC/IR/行情数据适配器、Scope 智能体、带修复重试的 6 个专业智能体、按截止日/新鲜度过滤的证据标准化、可审计的 LLM 用量预算、证据缺口自动路由，以及记录步骤的 Red-Team 审计：结构化异议会持久化，阻塞异议会阻止草稿生成。异步 worker、实时来源可用性与授权仍需部署方验证、报告渲染器仍在后续计划中——参见 [TODO.md](TODO.md)。
 
 ## 获取仓库
 

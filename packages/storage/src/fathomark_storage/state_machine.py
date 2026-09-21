@@ -29,7 +29,12 @@ TRANSITIONS: dict[RunState, frozenset[RunState]] = {
         {RunState.COLLECTING, RunState.CANCELLED, RunState.FAILED}
     ),
     RunState.COLLECTING: frozenset(
-        {RunState.ANALYZING, RunState.CANCELLED, RunState.FAILED}
+        {
+            RunState.ANALYZING,
+            RunState.NEEDS_REVIEW,
+            RunState.CANCELLED,
+            RunState.FAILED,
+        }
     ),
     RunState.ANALYZING: frozenset(
         {

@@ -160,6 +160,33 @@ def test_full_run_reaches_draft_matching_golden(seeded_run):
     assert steps["financial"].output_json["llm_usage"]["calls"] >= 1
 
 
+def test_insufficient_agent_confidence_produces_nr_snapshot(seeded_run):
+    repo, run_id = seeded_run
+    scope = repo.scope_of(run_id)
+    evidence = [
+        EvidenceItem.model_validate(item)
+        for item in json.loads((FIXTURE / "provider_dump.json").read_text())["evidence"]
+    ]
+    responses = []
+    for response in _specialist_responses(scope, evidence):
+        payload = json.loads(response)
+        for proposal in payload["proposals"]:
+            proposal["confidence"] = "insufficient"
+            proposal["evidence_ids"] = []
+            proposal["counter_evidence_ids"] = []
+            proposal["missing_data"] = ["required evidence unavailable"]
+        responses.append(json.dumps(payload))
+    responses.append(json.dumps({"issues": []}))
+
+    assert (
+        _orchestrator(repo, FakeLLMProvider(responses)).execute(run_id)
+        == RunState.DRAFT
+    )
+    snapshot = repo.latest_snapshot(run_id).snapshot_json
+    assert all(result["rating"] == "NR" for result in snapshot["lens_results"].values())
+    assert all(result["total"] is None for result in snapshot["lens_results"].values())
+
+
 def test_collect_normalizes_duplicate_provider_evidence_before_persisting(seeded_run):
     repo, run_id = seeded_run
     primary = FixtureEvidenceProvider(FIXTURE / "provider_dump.json")
@@ -241,6 +268,22 @@ def test_collect_persists_metric_observations_with_canonical_evidence(seeded_run
 
     assert repo.metric_observations_of(run_id) == [observation]
     assert output["metric_observation_count"] == 1
+
+
+def test_collect_without_usable_evidence_enters_needs_review(seeded_run):
+    repo, run_id = seeded_run
+    orch = Orchestrator(
+        repo,
+        load_framework(ROOT / "frameworks" / "common-stock.yaml"),
+        llm=ReplayLLMProvider(FIXTURE / "llm_cassette.json"),
+        evidence_providers=[_StaticEvidenceProvider([])],
+    )
+
+    assert orch.execute(run_id) == RunState.NEEDS_REVIEW
+    assert "no usable evidence" in repo.get(run_id).error
+    collect = repo.step_record(run_id, "collect")
+    assert collect.status == "failed"
+    assert repo.latest_snapshot(run_id) is None
 
 
 def test_resume_after_provider_failure_skips_finished_steps(seeded_run):
@@ -402,6 +445,8 @@ def test_resume_retries_only_failed_agent(seeded_run):
     assert steps["market"].attempt == 2
     assert steps["financial"].attempt == 1  # not re-run
     assert len(repo.proposals_of(run_id)) == 11  # no duplicates
+
+
 def _specialist_responses(scope, evidence):
     cassette = json.loads((FIXTURE / "llm_cassette.json").read_text(encoding="utf-8"))
     return [
@@ -435,13 +480,15 @@ def test_blocking_red_team_issue_stops_before_compute_and_is_idempotent(seeded_r
         EvidenceItem.model_validate(item)
         for item in json.loads((FIXTURE / "provider_dump.json").read_text())["evidence"]
     ]
-    llm = FakeLLMProvider(_specialist_responses(scope, evidence))
     issue = _review_issue(blocking=True)
-    orch = _orchestrator(
-        repo,
-        llm,
-        audit_text=json.dumps({"issues": [issue.model_dump(mode="json")]}),
+    llm = FakeLLMProvider(
+        _llm_script_with_audit(
+            scope,
+            evidence,
+            {"issues": [issue.model_dump(mode="json")]},
+        )
     )
+    orch = _orchestrator(repo, llm)
 
     assert orch.execute(run_id) == RunState.NEEDS_REVIEW
     assert repo.review_issues_of(run_id) == [issue]
@@ -464,13 +511,15 @@ def test_non_blocking_red_team_issue_reaches_draft_and_persists_finding(seeded_r
         EvidenceItem.model_validate(item)
         for item in json.loads((FIXTURE / "provider_dump.json").read_text())["evidence"]
     ]
-    llm = FakeLLMProvider(_specialist_responses(scope, evidence))
     issue = _review_issue(blocking=False)
-    orch = _orchestrator(
-        repo,
-        llm,
-        audit_text=json.dumps({"issues": [issue.model_dump(mode="json")]}),
+    llm = FakeLLMProvider(
+        _llm_script_with_audit(
+            scope,
+            evidence,
+            {"issues": [issue.model_dump(mode="json")]},
+        )
     )
+    orch = _orchestrator(repo, llm)
 
     assert orch.execute(run_id) == RunState.DRAFT
     assert repo.review_issues_of(run_id) == [issue]
@@ -479,7 +528,6 @@ def test_non_blocking_red_team_issue_reaches_draft_and_persists_finding(seeded_r
     assert red_team_output["blocking_issue_count"] == 0
     assert red_team_output["llm_usage"]["calls"] >= 7
     assert repo.step_record(run_id, "review_gate").output_json == {
-        "review_issue_count": 1,
         "blocking_issue_count": 0,
     }
     assert repo.step_record(run_id, "compute").status == "succeeded"

@@ -196,6 +196,62 @@ def test_metric_normalizer_converts_usd_millions_to_canonical_observation():
     assert result.observations == (observation,)
 
 
+@pytest.mark.parametrize(
+    ("unit", "currency", "expected_value", "expected_unit", "expected_currency"),
+    [
+        ("EURm", None, 5_870_000, "EUR", "EUR"),
+        ("million shares", None, 5_870_000, "shares", None),
+        ("%", None, 5.87, "percent", None),
+    ],
+)
+def test_metric_normalizer_standardizes_non_usd_and_non_xbrl_units(
+    unit, currency, expected_value, expected_unit, expected_currency
+):
+    raw = fathomark_providers.RawMetricObservation(
+        metric="metric",
+        value=5.87,
+        unit=unit,
+        currency=currency,
+        basis="quarterly",
+        data_date=date(2026, 5, 29),
+        evidence_id="ev_001",
+    )
+
+    observation = fathomark_providers.MetricNormalizer().normalize(raw)
+
+    assert observation.value == expected_value
+    assert observation.unit == expected_unit
+    assert observation.currency == expected_currency
+
+
+def test_metric_normalizer_rejects_conflicting_currency_and_unknown_units():
+    normalizer = fathomark_providers.MetricNormalizer()
+    conflicting = fathomark_providers.RawMetricObservation(
+        metric="revenue",
+        value=1,
+        unit="EURm",
+        currency="USD",
+        basis="quarterly",
+        data_date=date(2026, 5, 29),
+        evidence_id="ev_001",
+    )
+    unknown = fathomark_providers.RawMetricObservation(
+        metric="revenue",
+        value=1,
+        unit="widgets",
+        basis="quarterly",
+        data_date=date(2026, 5, 29),
+        evidence_id="ev_001",
+    )
+
+    with pytest.raises(fathomark_providers.MetricNormalizationError, match="conflicts"):
+        normalizer.normalize(conflicting)
+    with pytest.raises(
+        fathomark_providers.MetricNormalizationError, match="unsupported"
+    ):
+        normalizer.normalize(unknown)
+
+
 def test_company_ir_provider_fetches_allowlisted_document_as_traceable_evidence():
     url = "https://investors.adobe.com/news/2026-update.html"
     transport = _RecordedSecTransport(
