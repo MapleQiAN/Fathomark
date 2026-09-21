@@ -5,7 +5,13 @@ from pathlib import Path
 import fathomark_providers
 import pytest
 from fathomark_core.schemas import EvidenceItem, ScopeSnapshot
-from fathomark_providers import EvidenceNormalizationError, FixtureEvidenceProvider
+from fathomark_providers import (
+    CompanyIRDocument,
+    CompanyIREvidenceProvider,
+    EvidenceNormalizationError,
+    FixtureEvidenceProvider,
+    ProviderError,
+)
 
 ROOT = Path(__file__).parents[3]
 
@@ -187,6 +193,71 @@ def test_metric_normalizer_converts_usd_millions_to_canonical_observation():
     assert observation.currency == "USD"
     assert observation.basis == "quarterly"
     assert result.observations == (observation,)
+
+
+def test_company_ir_provider_fetches_allowlisted_document_as_traceable_evidence():
+    url = "https://investors.adobe.com/news/2026-update.html"
+    transport = _RecordedSecTransport(
+        {}, {url: "<html><body><h1>Adobe update</h1><p>Revenue grew.</p></body></html>"}
+    )
+    document = CompanyIRDocument(
+        id="ir:adbe:2026-update",
+        source_name="Adobe Investor Relations",
+        url=url,
+        published_date=date(2026, 8, 20),
+        data_period_end=date(2026, 7, 31),
+    )
+    provider = CompanyIREvidenceProvider(
+        documents_by_symbol={"ADBE": (document,)},
+        user_agent="Fathomark research@example.com",
+        allowed_hosts={"investors.adobe.com"},
+        transport=transport,
+        now=lambda: datetime(2026, 9, 3, 12, 0, tzinfo=UTC),
+    )
+
+    result = provider.fetch(SCOPE)
+
+    assert provider.name == "company-ir"
+    assert result.observations == ()
+    assert result.evidence[0].source_class == "ir"
+    assert result.evidence[0].excerpt == "Adobe update Revenue grew."
+    assert result.evidence[0].data_period_end == date(2026, 7, 31)
+    assert result.evidence[0].accessed_at == datetime(2026, 9, 3, 12, 0, tzinfo=UTC)
+    assert transport.text_calls == [
+        (
+            url,
+            {
+                "User-Agent": "Fathomark research@example.com",
+                "Accept": "text/html",
+            },
+        )
+    ]
+
+
+def test_company_ir_provider_rejects_unallowlisted_or_missing_documents():
+    unsafe = CompanyIRDocument(
+        id="ir:unsafe",
+        source_name="Untrusted",
+        url="https://evil.example/exfiltrate",
+        published_date=date(2026, 8, 20),
+    )
+    provider = CompanyIREvidenceProvider(
+        documents_by_symbol={"ADBE": (unsafe,)},
+        user_agent="Fathomark research@example.com",
+        allowed_hosts={"investors.adobe.com"},
+        transport=_RecordedSecTransport({}, {}),
+    )
+    with pytest.raises(ProviderError, match="allowlisted"):
+        provider.fetch(SCOPE)
+
+    empty = CompanyIREvidenceProvider(
+        documents_by_symbol={},
+        user_agent="Fathomark research@example.com",
+        allowed_hosts={"investors.adobe.com"},
+        transport=_RecordedSecTransport({}, {}),
+    )
+    with pytest.raises(ProviderError, match="no IR documents"):
+        empty.fetch(SCOPE)
 
 
 class _RecordedSecTransport:
