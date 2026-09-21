@@ -301,6 +301,141 @@
         }
       }
     },
+    "/v1/research-runs/{run_id}/artifacts": {
+      "get": {
+        "summary": "List Artifacts",
+        "operationId": "list_artifacts_v1_research_runs__run_id__artifacts_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Upload Artifact",
+        "operationId": "upload_artifact_v1_research_runs__run_id__artifacts_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtifactUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/artifacts/{artifact_id}/download": {
+      "get": {
+        "summary": "Download Artifact",
+        "operationId": "download_artifact_v1_artifacts__artifact_id__download_get",
+        "parameters": [
+          {
+            "name": "artifact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Artifact Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/research-runs/{run_id}/review-decisions": {
       "post": {
         "summary": "Review Decision",
@@ -557,6 +692,28 @@
           }
         }
       }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -573,6 +730,51 @@
           "expected_lock_version"
         ],
         "title": "ApproveRequest"
+      },
+      "ArtifactUploadRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "media_type": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Media Type"
+          },
+          "content_base64": {
+            "type": "string",
+            "maxLength": 16000000,
+            "minLength": 1,
+            "title": "Content Base64"
+          },
+          "manifest_hash": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 8,
+            "title": "Manifest Hash"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "approved"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "media_type",
+          "content_base64",
+          "manifest_hash",
+          "status"
+        ],
+        "title": "ArtifactUploadRequest"
       },
       "CreateRunRequest": {
         "properties": {

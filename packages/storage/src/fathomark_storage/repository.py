@@ -1,5 +1,6 @@
 """All DB access for research runs. No web imports here."""
 
+import hashlib
 import uuid
 from datetime import UTC, date, datetime
 
@@ -15,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from fathomark_storage.models import (
+    ArtifactRow,
     EvidenceItemRow,
     FactorProposalRow,
     HumanDecisionRow,
@@ -215,6 +217,47 @@ class RunRepository:
         self.session.flush()
         return len(observations)
 
+    def add_review_issues(self, run_id: str, issues: list[ReviewIssue]) -> int:
+        self.get(run_id)
+        evidence_ids = {
+            evidence.evidence_id
+            for evidence in self.session.scalars(
+                select(EvidenceItemRow).where(EvidenceItemRow.run_id == run_id)
+            )
+        }
+        for issue in issues:
+            for evidence_id in issue.evidence_ids:
+                if evidence_id not in evidence_ids:
+                    raise ValueError(f"unknown evidence id: {evidence_id}")
+
+        existing = {
+            (issue.category, issue.factor, issue.rationale)
+            for issue in self.session.scalars(
+                select(ReviewIssueRow).where(ReviewIssueRow.run_id == run_id)
+            )
+        }
+        batch: set[tuple[str, str | None, str]] = set()
+        for issue in issues:
+            key = (issue.category, issue.factor, issue.rationale)
+            if key in existing or key in batch:
+                raise ValueError(f"duplicate review issue: {key}")
+            batch.add(key)
+
+        for issue in issues:
+            self.session.add(
+                ReviewIssueRow(
+                    run_id=run_id,
+                    category=issue.category,
+                    factor=issue.factor,
+                    evidence_ids=issue.evidence_ids,
+                    rationale=issue.rationale,
+                    blocking=issue.blocking,
+                    as_of_date=issue.as_of_date,
+                )
+            )
+        self.session.flush()
+        return len(issues)
+
     def replace_proposal_score(
         self, run_id: str, factor: str, score: float, rationale: str
     ) -> None:
@@ -292,45 +335,6 @@ class RunRepository:
             )
             for row in rows
         ]
-
-    def add_review_issues(self, run_id: str, issues: list[ReviewIssue]) -> int:
-        self.get(run_id)
-        evidence_ids = {
-            evidence.evidence_id
-            for evidence in self.session.scalars(
-                select(EvidenceItemRow).where(EvidenceItemRow.run_id == run_id)
-            )
-        }
-        existing = {
-            (issue.category, issue.factor, issue.rationale)
-            for issue in self.session.scalars(
-                select(ReviewIssueRow).where(ReviewIssueRow.run_id == run_id)
-            )
-        }
-        batch: set[tuple[str, str | None, str]] = set()
-        for issue in issues:
-            for evidence_id in issue.evidence_ids:
-                if evidence_id not in evidence_ids:
-                    raise ValueError(f"unknown evidence id: {evidence_id}")
-            key = (issue.category, issue.factor, issue.rationale)
-            if key in existing or key in batch:
-                raise ValueError(f"duplicate review issue: {key}")
-            batch.add(key)
-
-        for issue in issues:
-            self.session.add(
-                ReviewIssueRow(
-                    run_id=run_id,
-                    category=issue.category,
-                    factor=issue.factor,
-                    evidence_ids=issue.evidence_ids,
-                    rationale=issue.rationale,
-                    blocking=issue.blocking,
-                    as_of_date=issue.as_of_date,
-                )
-            )
-        self.session.flush()
-        return len(issues)
 
     def review_issues_of(self, run_id: str) -> list[ReviewIssue]:
         rows = self.session.scalars(
@@ -498,3 +502,90 @@ class RunRepository:
         self.session.add(version)
         self.advance(run_id, RunState.APPROVED)
         return version, True
+
+    def find_artifact_by_idem(self, idem_key: str) -> ArtifactRow | None:
+        return self.session.scalar(
+            select(ArtifactRow).where(ArtifactRow.idempotency_key == idem_key)
+        )
+
+    def get_artifact(self, artifact_id: str) -> ArtifactRow:
+        row = self.session.get(ArtifactRow, artifact_id)
+        if row is None:
+            raise LookupError(f"artifact not found: {artifact_id}")
+        return row
+
+    def artifacts_of(self, run_id: str) -> list[ArtifactRow]:
+        self.get(run_id)
+        return list(
+            self.session.scalars(
+                select(ArtifactRow)
+                .where(ArtifactRow.run_id == run_id)
+                .order_by(ArtifactRow.name, ArtifactRow.status)
+            )
+        )
+
+    def create_artifact(
+        self,
+        run_id: str,
+        *,
+        idem_key: str,
+        name: str,
+        media_type: str,
+        content: bytes,
+        manifest_hash: str,
+        status: str,
+    ) -> tuple[ArtifactRow, bool]:
+        existing = self.find_artifact_by_idem(idem_key)
+        if existing is not None:
+            if existing.run_id != run_id:
+                raise ValueError(
+                    f"idempotency key {idem_key} already used by run {existing.run_id}"
+                )
+            return existing, False
+        self.get(run_id)
+        _validate_artifact_name(name)
+        if not media_type.strip() or len(media_type) > 160:
+            raise ValueError(
+                "artifact media_type must be non-empty and at most 160 characters"
+            )
+        if status not in {"draft", "approved"}:
+            raise ValueError(f"unsupported artifact status: {status}")
+        if not manifest_hash.startswith("sha256:"):
+            raise ValueError("artifact manifest_hash must be sha256-prefixed")
+        duplicate = self.session.scalar(
+            select(ArtifactRow).where(
+                ArtifactRow.run_id == run_id,
+                ArtifactRow.name == name,
+                ArtifactRow.status == status,
+            )
+        )
+        if duplicate is not None:
+            raise ValueError(f"duplicate artifact: {name} ({status})")
+        row = ArtifactRow(
+            id=_uid("art"),
+            run_id=run_id,
+            name=name,
+            media_type=media_type,
+            size_bytes=len(content),
+            content_hash="sha256:" + hashlib.sha256(content).hexdigest(),
+            manifest_hash=manifest_hash,
+            status=status,
+            content_bytes=content,
+            idempotency_key=idem_key,
+            created_at=datetime.now(UTC),
+        )
+        self.session.add(row)
+        self.session.flush()
+        return row, True
+
+
+def _validate_artifact_name(name: str) -> None:
+    if (
+        not name
+        or name in {".", ".."}
+        or "/" in name
+        or "\\" in name
+        or '"' in name
+        or any(ord(char) < 32 for char in name)
+    ):
+        raise ValueError(f"invalid artifact name: {name!r}")

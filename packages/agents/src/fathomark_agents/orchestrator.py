@@ -1,12 +1,14 @@
 """Orchestrator: DAG-ready step execution with step records and resume.
 
-Step graph is linear today (scope → collect → six specialist agents → Red-Team
-audit → review gate → compute) but expressed as StepSpec(depends_on=...) and
-executed via topological levels, so same-level steps may run concurrently later
-without a contract change. Failure semantics per design §14: provider failures
-→ failed with error recorded; agent output failures (repairs exhausted) →
-needs_review; never silent, never fabricated.
+Step graph is linear today (scope → collect → six specialist agents → compute)
+but expressed as StepSpec(depends_on=...) and executed via topological
+levels, so same-level steps may run concurrently later without a contract
+change. Failure semantics per design §14: provider failures → failed with
+error recorded; agent output failures (repairs exhausted) → needs_review;
+never silent, never fabricated.
 """
+
+from __future__ import annotations
 
 import hashlib
 import json
@@ -103,18 +105,18 @@ def _bfs_path(start: RunState, goal: RunState) -> list[RunState] | None:
 
 
 @dataclass(frozen=True)
-class StepResult:
-    output: dict
-    final_state: RunState | None = None
-
-
-@dataclass(frozen=True)
 class StepSpec:
     name: str
     depends_on: tuple[str, ...]
     entry_state: RunState
     exit_state: RunState | None
     run: Callable[[], dict | StepResult]  # returns step output for the record
+
+
+@dataclass(frozen=True)
+class StepResult:
+    output: dict
+    final_state: RunState | None = None
 
 
 class _BudgetedLLM:
@@ -223,11 +225,12 @@ class Orchestrator:
         state = RunState(row.state)
         if state in _NON_EXECUTABLE:
             raise OrchestratorError(f"run {run_id} in terminal state {state}")
-        if self.repo.has_blocking_review_issues(run_id):
-            self._ensure_state(run_id, RunState.NEEDS_REVIEW)
+        self._require_orchestrator_driven(run_id)
+        if state == RunState.NEEDS_REVIEW and self.repo.has_blocking_review_issues(
+            run_id
+        ):
             self.repo.session.commit()
             return RunState.NEEDS_REVIEW
-        self._require_orchestrator_driven(run_id)
         if state == RunState.FAILED:
             # Re-entry point for failed runs; step records decide what re-runs.
             self.repo.advance(run_id, RunState.COLLECTING)
@@ -284,14 +287,12 @@ class Orchestrator:
             result = step.run()
             if isinstance(result, StepResult):
                 output = result.output
-                final_state = result.final_state
+                if result.final_state is not None:
+                    self._ensure_state(run_id, result.final_state)
             else:
                 output = result
-                final_state = None
             if step.exit_state is not None:
                 self._ensure_state(run_id, step.exit_state)
-            if final_state is not None:
-                self._ensure_state(run_id, final_state)
         except AgentError as exc:
             self.repo.fail_step(run_id, step.name, str(exc))
             self.repo.get(run_id).error = str(exc)
@@ -306,7 +307,9 @@ class Orchestrator:
             self.repo.fail_step(run_id, step.name, str(exc))
             return self._fail_run(run_id, f"{type(exc).__name__}: {exc}")
         self.repo.finish_step(run_id, step.name, output)
-        return final_state
+        if isinstance(result, StepResult) and result.final_state is not None:
+            return result.final_state
+        return None
 
     def _fail_run(self, run_id: str, error: str) -> RunState:
         row = self.repo.get(run_id)
@@ -341,9 +344,7 @@ class Orchestrator:
                 ",".join(p.name for p in self.evidence_providers) or None,
                 ",".join(p.version for p in self.evidence_providers) or None,
             )
-        if step_name in _AGENT_STEP_NAMES:
-            return self.llm.name, self.llm.version
-        if step_name == "red_team":
+        if step_name in _AGENT_STEP_NAMES or step_name == "red_team":
             return self.llm.name, self.llm.version
         return None, None
 
@@ -370,20 +371,14 @@ class Orchestrator:
                 "scope": scope,
                 "evidence": self._evidence_index(run_id),
                 "observations": self._metric_index(run_id),
-                "proposals": [
-                    proposal.model_dump(mode="json")
-                    for proposal in sorted(
-                        self.repo.proposals_of(run_id), key=lambda item: item.factor
-                    )
-                ],
+                "proposals": self._proposal_index(run_id),
             }
         elif step_name == "review_gate":
             payload = {
-                "scope": scope,
-                "review_issues": [
+                "issues": [
                     issue.model_dump(mode="json")
                     for issue in self.repo.review_issues_of(run_id)
-                ],
+                ]
             }
         elif step_name == "compute":
             payload = {
@@ -412,6 +407,23 @@ class Orchestrator:
                 "evidence_id": observation.evidence_id,
             }
             for observation in self.repo.metric_observations_of(run_id)
+        ]
+
+    def _proposal_index(self, run_id: str) -> list[dict]:
+        return [
+            {
+                "factor": proposal.factor,
+                "proposed_score": proposal.proposed_score,
+                "rationale": proposal.rationale,
+                "evidence_ids": proposal.evidence_ids,
+                "counter_evidence_ids": proposal.counter_evidence_ids,
+                "confidence": proposal.confidence,
+                "missing_data": proposal.missing_data,
+                "as_of_date": proposal.as_of_date.isoformat(),
+            }
+            for proposal in sorted(
+                self.repo.proposals_of(run_id), key=lambda proposal: proposal.factor
+            )
         ]
 
 
@@ -514,18 +526,16 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
         return {
             "review_issue_count": len(issues),
             "blocking_issue_count": sum(issue.blocking for issue in issues),
+            "issue_count": len(issues),
             "llm_usage": orch.llm.usage().as_dict(),
         }
 
-    def review_gate_step() -> StepResult:
-        issues = repo.review_issues_of(run_id)
-        output = {
-            "review_issue_count": len(issues),
-            "blocking_issue_count": sum(issue.blocking for issue in issues),
-        }
-        if output["blocking_issue_count"]:
+    def review_gate_step() -> dict | StepResult:
+        blocking_count = sum(issue.blocking for issue in repo.review_issues_of(run_id))
+        output = {"blocking_issue_count": blocking_count}
+        if blocking_count:
             return StepResult(output, RunState.NEEDS_REVIEW)
-        return StepResult(output)
+        return output
 
     def compute_step() -> dict:
         snapshot = evaluate(
@@ -554,7 +564,11 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
             red_team_step,
         ),
         StepSpec(
-            "review_gate", ("red_team",), RunState.AUDITING, None, review_gate_step
+            "review_gate",
+            ("red_team",),
+            RunState.AUDITING,
+            None,
+            review_gate_step,
         ),
         StepSpec(
             "compute",

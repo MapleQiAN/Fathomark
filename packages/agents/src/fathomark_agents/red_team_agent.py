@@ -1,4 +1,4 @@
-"""Red-Team audit agent for evidence-linked review issues (design §5.8)."""
+"""Evidence-only Red-Team audit agent (design section 5.8)."""
 
 import json
 
@@ -15,35 +15,60 @@ from fathomark_providers import LLMProvider
 
 from fathomark_agents.repair import complete_with_repairs
 
-REVIEW_ISSUE_CATEGORIES = (
-    "unsupported_claim",
-    "evidence_conflict",
-    "date_or_currency_conflict",
-    "duplicate_counting",
-    "valuation_cherry_picking",
-    "missing_counter_evidence",
-    "veto_candidate",
-    "data_gap",
-)
-
-_INSTRUCTIONS = """You are the Red-Team Agent for an equity research pipeline.
-Audit only the supplied scope, evidence, observations, and specialist proposals.
-Return JSON {"issues": [...]} only. You cannot propose scores, replace scores,
-or average scores. Report only typed objections in these categories:
-unsupported_claim, evidence_conflict, date_or_currency_conflict,
-duplicate_counting, valuation_cherry_picking, missing_counter_evidence,
-veto_candidate, data_gap.
-Each issue: category, optional factor, evidence_ids, rationale, blocking,
-as_of_date. Only cite evidence ids listed below and never cite evidence
-published after the data cutoff.
+_INSTRUCTIONS = """You are the Red-Team auditor for an equity research pipeline.
+Audit the supplied specialist proposals and report objections only. You must not
+propose, revise, average, or vote on factor scores. Return JSON {\"issues\": [...]}.
+Each issue category must be one of: unsupported_claim, evidence_conflict,
+date_or_currency_conflict, duplicate_counting, valuation_cherry_picking,
+missing_counter_evidence, veto_candidate, data_gap. Cite only supplied evidence
+ids and never cite evidence published after the data cutoff. Set blocking=true
+only when a human must review the run before a draft can be produced.
 
 INPUT:
 """
 
 
-class RedTeamAgent:
-    """Audit specialist outputs without changing deterministic score arithmetic."""
+def _prompt(
+    scope: ScopeSnapshot,
+    evidence: list[EvidenceItem],
+    observations: list[MetricObservation],
+    proposals: list[FactorProposal],
+) -> str:
+    payload = {
+        "scope": json.loads(scope.model_dump_json()),
+        "evidence": [
+            {
+                "id": item.id,
+                "source_name": item.source_name,
+                "published_date": item.published_date.isoformat(),
+                "data_period_end": item.data_period_end.isoformat()
+                if item.data_period_end
+                else None,
+                "grade": item.grade,
+                "excerpt": item.excerpt,
+            }
+            for item in sorted(evidence, key=lambda item: item.id)
+        ],
+        "observations": [
+            json.loads(item.model_dump_json())
+            for item in sorted(
+                observations,
+                key=lambda item: (
+                    item.metric,
+                    item.data_date,
+                    item.evidence_id,
+                ),
+            )
+        ],
+        "proposals": [
+            json.loads(item.model_dump_json())
+            for item in sorted(proposals, key=lambda item: item.factor)
+        ],
+    }
+    return _INSTRUCTIONS + json.dumps(payload, sort_keys=True, ensure_ascii=False)
 
+
+class RedTeamAgent:
     name = "red-team-agent"
     version = "1.0.0"
 
@@ -57,36 +82,18 @@ class RedTeamAgent:
         scope: ScopeSnapshot,
         framework: Framework,
         evidence: list[EvidenceItem],
-        observations: list[MetricObservation] | None = None,
-        proposals: list[FactorProposal] | None = None,
+        observations: list[MetricObservation],
+        proposals: list[FactorProposal],
     ) -> list[ReviewIssue]:
         evidence_index = {item.id: item.published_date for item in evidence}
-        payload = {
-            "scope": scope.model_dump(mode="json"),
-            "evidence": [
-                item.model_dump(mode="json")
-                for item in sorted(evidence, key=lambda item: item.id)
-            ],
-            "observations": [
-                item.model_dump(mode="json")
-                for item in sorted(
-                    observations or [], key=lambda item: item.evidence_id
-                )
-            ],
-            "proposals": [
-                item.model_dump(mode="json")
-                for item in sorted(proposals or [], key=lambda item: item.factor)
-            ],
-        }
-        prompt = _INSTRUCTIONS + json.dumps(payload, sort_keys=True, ensure_ascii=False)
 
         def parse_validate(text: str) -> list[ReviewIssue]:
             try:
                 issue_dicts = json.loads(text)["issues"]
                 if not isinstance(issue_dicts, list):
-                    raise TypeError("issues must be a list")
+                    raise TypeError("issues must be a JSON array")
                 issues = [ReviewIssue.model_validate(item) for item in issue_dicts]
-            except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            except (KeyError, TypeError) as exc:
                 raise ValueError(f"malformed review issues payload: {exc}") from exc
             for issue in issues:
                 validate_review_issue(
@@ -99,7 +106,7 @@ class RedTeamAgent:
 
         return complete_with_repairs(
             self.llm,
-            prompt,
+            _prompt(scope, evidence, observations, proposals),
             "review_issues",
             parse_validate,
             self.max_repairs,

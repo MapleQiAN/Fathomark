@@ -71,3 +71,24 @@ class ResultResponse(BaseModel):
     state: str
     snapshot: dict | None
     version: dict | None
+
+
+class ArtifactUploadRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    media_type: str = Field(min_length=1, max_length=160)
+    content_base64: str = Field(min_length=1, max_length=16_000_000)
+    manifest_hash: str = Field(min_length=8, max_length=80)
+    status: Literal["draft", "approved"]
+
+
+class ArtifactResponse(BaseModel):
+    id: str
+    run_id: str
+    name: str
+    media_type: str
+    size_bytes: int
+    content_hash: str
+    manifest_hash: str
+    status: Literal["draft", "approved"]
+    created_at: datetime
+    download_url: str

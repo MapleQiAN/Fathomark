@@ -123,28 +123,50 @@ def test_evidence_normalizer_rejects_one_id_with_conflicting_content():
         )
 
 
-def test_evidence_normalizer_drops_stale_items_and_keeps_unknown_classes():
-    stale = _evidence(
-        "stale",
-        content_hash="sha256:stale",
-        published_date=date(2025, 1, 1),
-    )
-    unknown_class = _evidence(
-        "unknown_class",
-        content_hash="sha256:unknown",
-        published_date=date(2020, 1, 1),
-    ).model_copy(update={"source_class": "other"})
-
+def test_evidence_normalizer_drops_stale_and_future_items_when_policy_is_given():
     result = fathomark_providers.EvidenceNormalizer().normalize(
-        [stale, unknown_class],
-        data_cutoff=date(2026, 9, 3),
+        [
+            _evidence(
+                "stale",
+                content_hash="sha256:stale",
+                published_date=date(2025, 1, 1),
+            ),
+            _evidence(
+                "future",
+                content_hash="sha256:future",
+                published_date=date(2026, 9, 4),
+            ),
+            _evidence(
+                "fresh",
+                content_hash="sha256:fresh",
+                published_date=date(2026, 8, 1),
+            ),
+        ],
+        data_cutoff=date(2026, 9, 10),
         research_date=date(2026, 9, 3),
         freshness={"filings": {"max_age_days": 130}},
     )
 
-    assert [item.id for item in result.evidence] == ["unknown_class"]
-    assert result.dropped_stale == 1
-    assert result.stale_evidence_ids == ("stale",)
+    assert [item.id for item in result.evidence] == ["fresh"]
+    assert result.dropped_after_cutoff == 0
+    assert result.dropped_stale == 2
+    assert result.stale_evidence_ids == ("future", "stale")
+
+
+def test_evidence_normalizer_keeps_source_class_without_policy():
+    item = _evidence(
+        "other",
+        content_hash="sha256:other",
+        published_date=date(2020, 1, 1),
+    ).model_copy(update={"source_class": "other"})
+
+    result = fathomark_providers.EvidenceNormalizer().normalize(
+        [item],
+        data_cutoff=date(2026, 9, 3),
+    )
+
+    assert [e.id for e in result.evidence] == ["other"]
+    assert result.dropped_stale == 0
 
 
 def test_metric_normalizer_converts_usd_millions_to_canonical_observation():

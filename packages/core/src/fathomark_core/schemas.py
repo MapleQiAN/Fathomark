@@ -16,6 +16,18 @@ class ReviewIssueError(ValueError):
     """Raised when a Red-Team review issue violates the audit contract."""
 
 
+type ReviewIssueCategory = Literal[
+    "unsupported_claim",
+    "evidence_conflict",
+    "date_or_currency_conflict",
+    "duplicate_counting",
+    "valuation_cherry_picking",
+    "missing_counter_evidence",
+    "veto_candidate",
+    "data_gap",
+]
+
+
 class ScopeSnapshot(BaseModel):
     model_config = {"frozen": True}
 
@@ -69,19 +81,9 @@ class FactorProposal(BaseModel):
     as_of_date: date
 
 
-ReviewIssueCategory = Literal[
-    "unsupported_claim",
-    "evidence_conflict",
-    "date_or_currency_conflict",
-    "duplicate_counting",
-    "valuation_cherry_picking",
-    "missing_counter_evidence",
-    "veto_candidate",
-    "data_gap",
-]
-
-
 class ReviewIssue(BaseModel):
+    """An evidence-linked Red-Team objection awaiting human review."""
+
     model_config = {"frozen": True}
 
     category: ReviewIssueCategory
@@ -132,13 +134,14 @@ def validate_review_issue(
     evidence: dict[str, date],
     data_cutoff: date,
 ) -> None:
+    """Reject audit objections that cannot be traced to the frozen run input."""
     if issue.factor is not None and issue.factor not in framework.factors:
         raise ReviewIssueError(f"unknown factor: {issue.factor}")
     if not issue.rationale.strip():
         raise ReviewIssueError("rationale must not be empty")
     if issue.as_of_date > data_cutoff:
         raise ReviewIssueError(
-            f"review issue as_of_date {issue.as_of_date} beyond cutoff {data_cutoff}"
+            f"issue as_of_date {issue.as_of_date} beyond cutoff {data_cutoff}"
         )
     for ev_id in issue.evidence_ids:
         if ev_id not in evidence:

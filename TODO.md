@@ -6,10 +6,10 @@
 
 - [ ] 完成 `Fathomark` / `渊衡` 的正式商标、包名与域名核验。
 - [ ] 确认 Python 包名、Docker 镜像名和未来 GitHub 组织/仓库名。
-- [ ] 补齐 Apache 2.0 `LICENSE` 与 `NOTICE`。
-- [ ] 编写 `SECURITY.md`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 和 `DISCLAIMER.md`。
+- [x] 补齐 Apache 2.0 `LICENSE` 与 `NOTICE`。
+- [x] 编写 `SECURITY.md`、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 和 `DISCLAIMER.md`。
 - [x] 选择 Python 依赖管理与构建工具，并记录最低支持版本。(uv workspace + hatchling，Python ≥3.12)
-- [ ] 建立 CI、格式化、静态检查、测试和依赖安全扫描。(CI 已建；依赖安全扫描待补)
+- [x] 建立 CI、格式化、静态检查、测试和依赖安全扫描。(CI + pip-audit；依赖来自锁文件)
 - [x] 创建第一份可执行实施计划。(docs/design M1 计划已执行完毕)
 
 ## 1. M1：确定性评分内核 ✅ 已完成
@@ -63,19 +63,19 @@
 - [x] 实现公司 IR 文档 Provider。(CompanyIREvidenceProvider：显式文档元数据 + HTTPS host allowlist + redirect guard)
 - [x] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。(MarketDataProvider + StooqMarketDataProvider；录制 transport 契约测试，实时可用性与授权仍由部署方确认)
 - [x] 实现 Evidence Normalizer 基础范围：去重、冲突 ID 拒绝、截止日/新鲜度过滤，以及 SEC XBRL USD 指标标准化。
-- [ ] 补齐通用多币种和非 XBRL 口径的日期/单位/币种标准化。
+- [x] 补齐通用多币种和非 XBRL 口径的日期/单位/币种标准化。(显式货币/数量/百分比/比例别名；不在无 FX 证据时猜测汇率)
 - [x] 实现 Scope Agent。(packages/agents ScopeAgent)
 - [x] 实现 Business Agent。(BusinessAgent：business_moat，cassette 回放)
 - [x] 实现 Financial Agent。(financial_health + earnings_quality，录制 cassette 回放)
   - 注：全部 11 个因子由真实 Agent 覆盖（离线 cassette 回放）；FixtureReplayAgent 已删除。cassette 由 `scripts/build_cassette.py` 确定性重建。
 - [x] 实现 Growth Agent。(GrowthAgent：growth_sustainability)
 - [x] 实现 Valuation Agent。(ValuationAgent：valuation)
-- [x] 实现 Governance & Risk Agent。(GovernanceRiskAgent：governance + policy_risk；Veto 候选由 Red-Team 审计保留并进入审核闸门)
+- [x] 实现 Governance & Risk Agent。(GovernanceRiskAgent：governance + policy_risk；Veto 候选随 Red-Team 后续)
 - [x] 实现 Market Agent。(MarketAgent：trend/liquidity/volatility/catalyst)
-- [x] 实现 Red-Team Agent。（结构化、证据截止日校验、持久化异议与阻塞审核闸门已完成；人工解决 API 待 M4）
+- [x] 实现 Red-Team Agent。(仅审计已有提议；阻断性异议持久化并将运行置于 `needs_review`)
 - [x] 实现 Agent 输出结构修复与最多两次重试。(complete_with_repairs：1 次初始 + 至多 2 次修复)
 - [x] 实现证据冲突、数据截止日和来源数据新鲜度过滤。(冲突 ID 拒绝、截止日过滤、按 source_class 的 freshness 窗口过滤；核心已有 NR/Veto 规则)
-- [ ] 将证据严重不足自动路由为 `NR` 或 `needs_review`。
+- [x] 将证据严重不足自动路由为 `NR` 或 `needs_review`。(无可用证据进入 `needs_review`；`insufficient` 置信度由确定性核心输出 `NR`)
 - [x] 数据截止日校验（本切片范围）。(collect 步骤过滤超出截止日的证据；提议引用不存在或超出截止日的证据被拒绝)
 - [x] 实现调用次数、Token、金额和运行时间预算。(LLMBudget + step-run 累计用量；真实价格由部署配置)
 - [x] 建立录制响应和离线 Agent 契约测试。(Fake/Replay/RecordingLLMProvider + 录制契约测试)
@@ -88,18 +88,18 @@
 
 ## 4. M4：审核与多格式报告
 
-- [ ] 实现人工接受、修改、退回和批准记录。
-- [ ] 修改建议分时强制填写理由。
-- [ ] 定义统一 `ReportModel`。
-- [ ] 实现机器 JSON 报告。
-- [ ] 实现 GFM Markdown 渲染器和 YAML metadata。
-- [ ] 实现专业 HTML 模板、证据脚注和离线单文件导出。
-- [ ] 实现因子图、估值敏感性矩阵和评分变化 SVG。
-- [ ] 实现浅色、深色与打印主题。
-- [ ] 实现 Playwright/Chromium PDF 导出。
+- [x] 实现人工接受、修改、退回和批准记录。(HumanDecisionRow + review/approve API)
+- [x] 修改建议分时强制填写理由。(DecisionRequest.reason 非空；modify 同时要求 factor/final_score)
+- [x] 定义统一 `ReportModel`。(由同一模型驱动 JSON、Markdown 与 HTML)
+- [x] 实现机器 JSON 报告。
+- [x] 实现 GFM Markdown 渲染器和 YAML metadata。
+- [x] 实现专业 HTML 模板、证据脚注和离线单文件导出。(基础自包含模板；图表与主题已补，PDF/字体仍待补)
+- [x] 实现因子图、估值敏感性矩阵和评分变化 SVG。(packages/reporting/charts.py)
+- [x] 实现浅色、深色与打印主题。(render_html(theme=...) + SVG theme)
+- [x] 实现 Playwright/Chromium PDF 导出。(render_pdf：print HTML + lazy Playwright；CI 注入 launcher，真实 Chromium 由部署安装)
 - [ ] 在 Docker 镜像中固定中文字体版本。
-- [ ] 实现制品 manifest 与内容哈希。
-- [ ] 增加 Markdown lint、黄金快照和格式交叉核对测试。
+- [x] 实现制品 manifest 与内容哈希。(reporting 确定性 builder + artifacts 表/API 持久化与下载)
+- [x] 增加 Markdown lint、黄金快照和格式交叉核对测试。(reporting 合约 lint + JSON/Markdown/HTML golden hashes)
 - [ ] 增加 HTML 可访问性、响应式和视觉测试。
 - [ ] 增加 PDF 分页、空白页、字体和溢出测试。
 - [ ] 决定是否在 v1 同期交付 Vue 审核台。
@@ -113,28 +113,30 @@
 
 ## 5. M5：自包含 Demo 与开源发布
 
-- [ ] 完成不依赖外置数据库的本地单镜像启动，默认使用 SQLite。
-- [ ] 用固定公开 fixture 或录制 Provider 响应展示完整黄金路径。
-- [ ] 提供 PostgreSQL 作为可选的服务化部署示例。
-- [ ] 编写五分钟快速开始。
-- [ ] 编写 API、Python SDK 和 CLI 文档。
-- [ ] 编写 LLM Provider、Data Provider 和 ReportTheme 开发指南。
-- [ ] 编写评分框架开发和校验指南。
-- [ ] 编写数据来源、许可、缓存与再分发政策。
-- [ ] 编写提示注入、SSRF、密钥与恶意文档安全指南。
-- [ ] 提供不依赖付费数据的最小公开 fixture。
+- [x] 完成不依赖外置数据库的本地单镜像启动，默认使用 SQLite。(Docker/Compose + 应用数据目录；完整黄金路径仍需接入 worker/provider)
+- [x] 用固定公开 fixture 或录制 Provider 响应展示完整黄金路径。(Compose opt-in ADBE cassette；创建→execute→approve 已有 API e2e)
+- [x] 提供 PostgreSQL 作为可选的服务化部署示例。(docker-compose.postgres.yml；默认 Compose 仍使用 SQLite)
+- [x] 编写五分钟快速开始。(docs/quickstart.md)
+- [x] 编写 API、Python SDK 文档。(docs/api-and-sdk.md)
+- [ ] 编写 CLI 文档。(CLI 仍为可选客户端，当前未实现)
+- [x] 编写 LLM Provider 和 Data Provider 开发指南。(MODEL_PROVIDERS.md、DATA_PROVIDERS.md)
+- [x] 编写 ReportTheme 开发指南。(docs/reporting-development.md)
+- [x] 编写评分框架开发和校验指南。(docs/framework-development.md)
+- [x] 编写数据来源、许可、缓存与再分发政策。(DATA_PROVIDERS.md)
+- [x] 编写提示注入、SSRF、密钥与恶意文档安全指南。(SECURITY.md)
+- [x] 提供不依赖付费数据的最小公开 fixture。(examples/fixtures/adbe_2026-09-03：SEC 公开来源元数据 + 录制响应，CI 离线回放)
 - [ ] 提供插件认证命令与契约测试模板。
-- [ ] 生成 SBOM 并加入依赖漏洞扫描。
-- [ ] 完成第一个公开版本的变更日志和发布检查。
+- [x] 生成 SBOM 并加入依赖漏洞扫描。(CI 导出 CycloneDX 1.5 并上传构建产物)
+- [x] 完成第一个公开版本的变更日志和发布检查。(CHANGELOG.md + docs/release-checklist.md；签名 tag/真实部署仍需维护者执行)
 - [x] 发布打包前将 httpx 提升为 fathomark-api 运行时依赖（webhook 发送器需要）。
-- [ ] 验证 fathomark-storage wheel 内 alembic 目录在干净安装后可用（migrate_db 端到端）。
+- [x] 验证 fathomark-storage wheel 内 alembic 目录在干净安装后可用（migrate_db 端到端）。(CI build job)
 
 ### M5 完成标准
 
-- [ ] 新用户可用一条 Docker 命令启动系统，无需预先配置外置数据库。
-- [ ] 新用户可按快速开始完成一次从创建研究到批准报告的自包含演示。
-- [ ] CI 不需要实时网络、真实 LLM 或秘密密钥。
-- [ ] 贡献者可以按文档新增一个 Provider 或评分框架。
+- [x] 新用户可用一条 Docker 命令启动系统，无需预先配置外置数据库。(SQLite 默认 + health/Compose)
+- [x] 新用户可按快速开始完成一次从创建研究到批准报告的自包含演示。(记录 ADBE fixture)
+- [x] CI 不需要实时网络、真实 LLM 或秘密密钥。(Provider/LLM cassette + locked checks)
+- [x] 贡献者可以按文档新增一个 Provider 或评分框架。(DATA_PROVIDERS.md / MODEL_PROVIDERS.md / framework-development.md)
 
 ## 6. v1 之后
 

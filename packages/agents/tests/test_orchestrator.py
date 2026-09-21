@@ -37,34 +37,87 @@ from fathomark_storage.state_machine import RunState
 ROOT = Path(__file__).parents[3]
 FIXTURE = ROOT / "examples" / "fixtures" / "adbe_2026-09-03"
 EXPECTED = json.loads((FIXTURE / "expected_snapshot.json").read_text(encoding="utf-8"))
-EMPTY_AUDIT = json.dumps({"issues": []})
 
 
-class _AuditAwareLLMProvider:
-    """Keep legacy cassette tests offline while making audit responses explicit."""
-
-    def __init__(self, inner, audit_text=EMPTY_AUDIT):
-        self._inner = inner
-        self._audit_text = audit_text
-        self.name = inner.name
-        self.version = inner.version
-
-    def complete(self, request):
-        if request.schema_name == "review_issues" and self._audit_text is not None:
-            return LLMResponse(
-                text=self._audit_text, model=f"{self.name}-{self.version}"
-            )
-        return self._inner.complete(request)
-
-
-def _orchestrator(repo, llm, *, audit_text=EMPTY_AUDIT, **kwargs):
+def _orchestrator(repo, llm, **kwargs):
     return Orchestrator(
         repo,
         load_framework(ROOT / "frameworks" / "common-stock.yaml"),
-        llm=_AuditAwareLLMProvider(llm, audit_text=audit_text),
+        llm=llm,
         evidence_providers=[FixtureEvidenceProvider(FIXTURE / "provider_dump.json")],
         **kwargs,
     )
+
+
+def _llm_script_with_audit(scope, evidence, audit_payload):
+    cassette = json.loads((FIXTURE / "llm_cassette.json").read_text(encoding="utf-8"))
+    specialist_payloads = [
+        cassette[prompt_key(build_prompt(scope, evidence, cls.instructions))]
+        for cls in (
+            FinancialAgent,
+            BusinessAgent,
+            GrowthAgent,
+            ValuationAgent,
+            GovernanceRiskAgent,
+        )
+    ]
+    market_payload = cassette[
+        prompt_key(build_prompt(scope, evidence, MarketAgent.instructions))
+    ]
+    return [*specialist_payloads, market_payload, json.dumps(audit_payload)]
+
+
+def _audit_issue(blocking):
+    return {
+        "category": "data_gap",
+        "factor": None,
+        "evidence_ids": ["ev_001"],
+        "rationale": "A material primary-source gap remains before publication.",
+        "blocking": blocking,
+        "as_of_date": "2026-09-03",
+    }
+
+
+def test_blocking_red_team_issue_stops_before_draft(seeded_run):
+    repo, run_id = seeded_run
+    scope = repo.scope_of(run_id)
+    evidence = [
+        EvidenceItem.model_validate(item)
+        for item in json.loads((FIXTURE / "provider_dump.json").read_text())["evidence"]
+    ]
+    llm = FakeLLMProvider(
+        _llm_script_with_audit(scope, evidence, {"issues": [_audit_issue(True)]})
+    )
+    orch = _orchestrator(repo, llm)
+
+    assert orch.execute(run_id) == RunState.NEEDS_REVIEW
+    assert repo.review_issues_of(run_id) == [
+        ReviewIssue.model_validate(_audit_issue(True))
+    ]
+    assert repo.step_record(run_id, "red_team").status == "succeeded"
+    assert repo.step_record(run_id, "compute") is None
+    calls = orch.llm.calls
+
+    assert orch.execute(run_id) == RunState.NEEDS_REVIEW
+    assert orch.llm.calls == calls
+    assert repo.latest_snapshot(run_id) is None
+
+
+def test_non_blocking_red_team_issue_allows_draft(seeded_run):
+    repo, run_id = seeded_run
+    scope = repo.scope_of(run_id)
+    evidence = [
+        EvidenceItem.model_validate(item)
+        for item in json.loads((FIXTURE / "provider_dump.json").read_text())["evidence"]
+    ]
+    llm = FakeLLMProvider(
+        _llm_script_with_audit(scope, evidence, {"issues": [_audit_issue(False)]})
+    )
+
+    assert _orchestrator(repo, llm).execute(run_id) == RunState.DRAFT
+    assert repo.review_issues_of(run_id)[0].blocking is False
+    assert repo.step_record(run_id, "review_gate").status == "succeeded"
+    assert repo.latest_snapshot(run_id) is not None
 
 
 class _StaticEvidenceProvider:
@@ -104,6 +157,7 @@ def test_full_run_reaches_draft_matching_golden(seeded_run):
         "compute",
     }
     assert all(s.status == "succeeded" for s in steps.values())
+    assert steps["financial"].output_json["llm_usage"]["calls"] >= 1
 
 
 def test_collect_normalizes_duplicate_provider_evidence_before_persisting(seeded_run):
@@ -348,8 +402,6 @@ def test_resume_retries_only_failed_agent(seeded_run):
     assert steps["market"].attempt == 2
     assert steps["financial"].attempt == 1  # not re-run
     assert len(repo.proposals_of(run_id)) == 11  # no duplicates
-
-
 def _specialist_responses(scope, evidence):
     cassette = json.loads((FIXTURE / "llm_cassette.json").read_text(encoding="utf-8"))
     return [
