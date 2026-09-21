@@ -12,6 +12,7 @@ from fathomark_core.framework import Framework
 from fathomark_core.schemas import (
     EvidenceItem,
     FactorProposal,
+    MetricObservation,
     ScopeSnapshot,
     validate_proposal,
 )
@@ -21,7 +22,10 @@ from fathomark_agents.repair import complete_with_repairs
 
 
 def build_prompt(
-    scope: ScopeSnapshot, evidence: list[EvidenceItem], instructions: str
+    scope: ScopeSnapshot,
+    evidence: list[EvidenceItem],
+    instructions: str,
+    observations: list[MetricObservation] | None = None,
 ) -> str:
     payload = {
         "scope": json.loads(scope.model_dump_json()),
@@ -40,6 +44,20 @@ def build_prompt(
             for e in sorted(evidence, key=lambda e: e.id)
         ],
     }
+    if observations:
+        payload["observations"] = [
+            {
+                "metric": observation.metric,
+                "value": observation.value,
+                "unit": observation.unit,
+                "currency": observation.currency,
+                "basis": observation.basis,
+                "formula": observation.formula,
+                "data_date": observation.data_date.isoformat(),
+                "evidence_id": observation.evidence_id,
+            }
+            for observation in observations
+        ]
     return instructions + json.dumps(payload, sort_keys=True, ensure_ascii=False)
 
 
@@ -61,6 +79,7 @@ class SpecialistAgent:
         scope: ScopeSnapshot,
         framework: Framework,
         evidence: list[EvidenceItem],
+        observations: list[MetricObservation] | None = None,
     ) -> list[FactorProposal]:
         evidence_index = {e.id: e.published_date for e in evidence}
 
@@ -90,7 +109,7 @@ class SpecialistAgent:
 
         return complete_with_repairs(
             self.llm,
-            build_prompt(scope, evidence, self.instructions),
+            build_prompt(scope, evidence, self.instructions, observations),
             "factor_proposals",
             parse_validate,
             self.max_repairs,

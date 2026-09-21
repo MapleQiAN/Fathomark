@@ -24,7 +24,7 @@ class EvidenceProvider(Protocol):
     name: str
     version: str
 
-    def fetch(self, scope: ScopeSnapshot) -> list[EvidenceItem]: ...
+    def fetch(self, scope: ScopeSnapshot) -> "ProviderResult": ...
 
 
 class EvidenceNormalizationError(ValueError):
@@ -173,9 +173,12 @@ class FixtureEvidenceProvider:
         self.version = version
         self._dump_path = Path(dump_path)
 
-    def fetch(self, scope: ScopeSnapshot) -> list[EvidenceItem]:
+    def fetch(self, scope: ScopeSnapshot) -> ProviderResult:
         raw = json.loads(self._dump_path.read_text(encoding="utf-8"))
-        return [EvidenceItem.model_validate(e) for e in raw["evidence"]]
+        return ProviderResult(
+            evidence=tuple(EvidenceItem.model_validate(e) for e in raw["evidence"]),
+            observations=(),
+        )
 
 
 class _SecTransport(Protocol):
@@ -226,11 +229,26 @@ class SecEdgarEvidenceProvider:
 
     _TICKERS_URL = "https://www.sec.gov/files/company_tickers_exchange.json"
     _SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
+    _COMPANYFACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
     _ARCHIVES_URL = (
         "https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/{document}"
     )
     _FILING_FORMS = frozenset({"10-K", "10-Q"})
     _ACCESSION_RE = re.compile(r"\d{10}-\d{2}-\d{6}")
+    _METRIC_TAGS = (
+        (
+            "revenue",
+            (
+                "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "SalesRevenueNet",
+            ),
+        ),
+        ("net_income", ("NetIncomeLoss",)),
+        (
+            "operating_cash_flow",
+            ("NetCashProvidedByUsedInOperatingActivities",),
+        ),
+    )
 
     def __init__(
         self,
@@ -250,18 +268,27 @@ class SecEdgarEvidenceProvider:
         self._now = now
         self._max_filings = max_filings
 
-    def fetch(self, scope: ScopeSnapshot) -> list[EvidenceItem]:
+    def fetch(self, scope: ScopeSnapshot) -> ProviderResult:
         try:
             cik, company_name = self._resolve_ticker(scope.symbol)
             submissions = self._transport.get_json(
                 self._SUBMISSIONS_URL.format(cik=cik), headers=self._headers
             )
             filings = self._recent_filings(submissions)
-            return self._filing_evidence(
+            evidence = self._filing_evidence(
                 filings=filings,
                 cik=cik,
                 company_name=company_name,
                 data_cutoff=scope.data_cutoff,
+            )
+            companyfacts = self._transport.get_json(
+                self._COMPANYFACTS_URL.format(cik=cik), headers=self._headers
+            )
+            observations = self._companyfacts_observations(
+                companyfacts, evidence=evidence, data_cutoff=scope.data_cutoff
+            )
+            return ProviderResult(
+                evidence=tuple(evidence), observations=tuple(observations)
             )
         except ProviderError:
             raise
@@ -371,6 +398,93 @@ class SecEdgarEvidenceProvider:
             if len(evidence) == self._max_filings:
                 break
         return evidence
+
+    def _companyfacts_observations(
+        self,
+        companyfacts: object,
+        *,
+        evidence: list[EvidenceItem],
+        data_cutoff: date,
+    ) -> list[MetricObservation]:
+        if not isinstance(companyfacts, dict):
+            raise ProviderError("SEC companyfacts response is not an object")
+        facts = companyfacts.get("facts")
+        us_gaap = facts.get("us-gaap") if isinstance(facts, dict) else None
+        if not isinstance(us_gaap, dict):
+            raise ProviderError("SEC companyfacts response has no us-gaap facts")
+        evidence_by_accession = {
+            item.id.rsplit(":", 1)[-1]: item.id for item in evidence
+        }
+        normalizer = MetricNormalizer()
+        observations: list[MetricObservation] = []
+        for metric, tags in self._METRIC_TAGS:
+            seen: set[tuple[str, str, str, date]] = set()
+            for tag in tags:
+                tag_payload = us_gaap.get(tag)
+                units = (
+                    tag_payload.get("units") if isinstance(tag_payload, dict) else None
+                )
+                facts_in_usd = units.get("USD") if isinstance(units, dict) else None
+                if not isinstance(facts_in_usd, list):
+                    continue
+                for fact in facts_in_usd:
+                    raw = self._raw_metric(
+                        metric=metric,
+                        tag=tag,
+                        fact=fact,
+                        evidence_by_accession=evidence_by_accession,
+                        data_cutoff=data_cutoff,
+                    )
+                    if raw is None:
+                        continue
+                    key = (raw.metric, raw.evidence_id, raw.basis, raw.data_date)
+                    if key in seen:
+                        continue
+                    observations.append(normalizer.normalize(raw))
+                    seen.add(key)
+        return observations
+
+    def _raw_metric(
+        self,
+        *,
+        metric: str,
+        tag: str,
+        fact: object,
+        evidence_by_accession: dict[str, str],
+        data_cutoff: date,
+    ) -> RawMetricObservation | None:
+        if not isinstance(fact, dict):
+            return None
+        form = str(fact.get("form", ""))
+        accession = str(fact.get("accn", ""))
+        evidence_id = evidence_by_accession.get(accession)
+        if form not in self._FILING_FORMS or evidence_id is None:
+            return None
+        try:
+            filed = date.fromisoformat(str(fact["filed"]))
+            start = date.fromisoformat(str(fact["start"]))
+            end = date.fromisoformat(str(fact["end"]))
+            value = float(fact["val"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        if filed > data_cutoff or end > data_cutoff:
+            return None
+        duration_days = (end - start).days
+        if form == "10-Q" and 80 <= duration_days <= 100:
+            basis = "quarterly"
+        elif form == "10-K" and 330 <= duration_days <= 380:
+            basis = "annual"
+        else:
+            return None
+        return RawMetricObservation(
+            metric=metric,
+            value=value,
+            unit="USD",
+            basis=basis,
+            data_date=end,
+            evidence_id=evidence_id,
+            formula=f"SEC XBRL us-gaap:{tag}",
+        )
 
 
 def _extract_html_text(document: str) -> str:

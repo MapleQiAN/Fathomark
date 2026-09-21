@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from fathomark_core import evaluate
 from fathomark_core.framework import Framework
+from fathomark_core.schemas import MetricObservation
 from fathomark_providers import (
     EvidenceNormalizer,
     EvidenceProvider,
@@ -267,11 +268,16 @@ class Orchestrator:
                 ],
             }
         elif step_name in _AGENT_STEP_NAMES:
-            payload = {"scope": scope, "evidence": self._evidence_index(run_id)}
+            payload = {
+                "scope": scope,
+                "evidence": self._evidence_index(run_id),
+                "observations": self._metric_index(run_id),
+            }
         elif step_name == "compute":
             payload = {
                 "scope": scope,
                 "evidence": self._evidence_index(run_id),
+                "observations": self._metric_index(run_id),
                 "proposals": sorted(p.factor for p in self.repo.proposals_of(run_id)),
             }
         else:
@@ -280,6 +286,21 @@ class Orchestrator:
 
     def _evidence_index(self, run_id: str) -> list[list[str]]:
         return sorted([e.id, e.content_hash] for e in self.repo.evidence_of(run_id))
+
+    def _metric_index(self, run_id: str) -> list[dict]:
+        return [
+            {
+                "metric": observation.metric,
+                "value": observation.value,
+                "unit": observation.unit,
+                "currency": observation.currency,
+                "basis": observation.basis,
+                "formula": observation.formula,
+                "data_date": observation.data_date.isoformat(),
+                "evidence_id": observation.evidence_id,
+            }
+            for observation in self.repo.metric_observations_of(run_id)
+        ]
 
 
 def _topo_levels(steps: list[StepSpec]) -> list[list[StepSpec]]:
@@ -314,8 +335,11 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
     def collect_step() -> dict:
         scope = repo.scope_of(run_id)
         fetched = []
+        observations: list[MetricObservation] = []
         for provider in orch.evidence_providers:
-            fetched.extend(provider.fetch(scope))
+            result = provider.fetch(scope)
+            fetched.extend(result.evidence)
+            observations.extend(result.observations)
         normalized = EvidenceNormalizer().normalize(
             fetched, data_cutoff=scope.data_cutoff
         )
@@ -323,11 +347,26 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
             raise ProviderError(
                 "no usable evidence after data_cutoff filter", retriable=False
             )
+        canonical_observations = []
+        for observation in observations:
+            evidence_id = normalized.canonical_id_by_input_id.get(
+                observation.evidence_id
+            )
+            if evidence_id is None:
+                raise ProviderError(
+                    f"metric observation references unusable evidence {observation.evidence_id}",
+                    retriable=False,
+                )
+            canonical_observations.append(
+                observation.model_copy(update={"evidence_id": evidence_id})
+            )
         repo.add_evidence(run_id, list(normalized.evidence))
+        repo.add_metric_observations(run_id, canonical_observations)
         return {
             "evidence_ids": [e.id for e in normalized.evidence],
             "dropped_after_cutoff": normalized.dropped_after_cutoff,
             "dropped_duplicates": normalized.dropped_duplicates,
+            "metric_observation_count": len(canonical_observations),
         }
 
     def make_agent_step(agent_cls) -> Callable[[], dict]:
@@ -336,6 +375,7 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
                 scope=repo.scope_of(run_id),
                 framework=orch.framework,
                 evidence=repo.evidence_of(run_id),
+                observations=repo.metric_observations_of(run_id),
             )
             repo.add_proposals(run_id, proposals, origin="agent")
             return {"factors": sorted(p.factor for p in proposals)}

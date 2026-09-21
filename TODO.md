@@ -35,7 +35,7 @@
 
 - [x] 设计 SQLAlchemy 模型和 Alembic 迁移。(packages/storage、alembic/versions/0001_baseline)
 - [x] 同时支持 SQLite 与 PostgreSQL。(SQLite 默认；PG 经 PG_TEST_URL 可选测试，类型可移植)
-- [x] 实现研究运行、证据、指标、建议分、异议、人工决定、版本和制品仓储。(runs/evidence/proposals/decisions/versions/snapshots；ProviderRun/MetricObservation/ReviewIssue/Artifact 表延至 M3/M4)
+- [x] 实现研究运行、证据、指标、建议分、异议、人工决定、版本和制品仓储。(runs/evidence/proposals/decisions/versions/snapshots/metric_observations；ProviderRun/ReviewIssue/Artifact 表延至 M3/M4)
 - [x] 实现任务状态机和非法状态转换保护。(packages/storage/state_machine.py)
 - [x] 实现步骤级输入哈希、幂等执行和断点恢复。(输入哈希与幂等已就绪；断点恢复依赖 M3 worker)
 - [x] 实现研究任务创建、查询、取消、重试、审核、批准和结果 API。(packages/api，11 条路由)
@@ -59,10 +59,10 @@
 - [ ] 实现 OpenAI Provider。
 - [ ] 实现 Anthropic Provider。
 - [ ] 实现 OpenAI-compatible Provider。
-- [ ] 实现 SEC EDGAR/XBRL Provider。（SEC EDGAR 10-K/10-Q 证据采集已实现；XBRL 指标提取仍待补。）
+- [x] 实现 SEC EDGAR/XBRL Provider。（10-K/10-Q 证据采集；companyfacts 中收入、净利润、经营现金流的可追溯 USD 单期指标。）
 - [ ] 实现公司 IR 文档 Provider。
 - [ ] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。
-- [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。（证据截止日过滤、内容去重与冲突 ID 拒绝已实现；指标日期、单位和币种标准化仍待补。）
+- [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。（证据截止日过滤、内容去重、冲突 ID 拒绝，以及 SEC XBRL USD 指标的日期/单位/币种标准化已实现；通用多币种和非 XBRL 口径仍待补。）
 - [x] 实现 Scope Agent。(packages/agents ScopeAgent)
 - [x] 实现 Business Agent。(BusinessAgent：business_moat，cassette 回放)
 - [x] 实现 Financial Agent。(financial_health + earnings_quality，录制 cassette 回放)

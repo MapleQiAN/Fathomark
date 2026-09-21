@@ -24,9 +24,11 @@ def test_fixture_provider_returns_typed_evidence():
     provider = FixtureEvidenceProvider(
         ROOT / "examples" / "fixtures" / "adbe_2026-09-03" / "provider_dump.json"
     )
-    items = provider.fetch(SCOPE)
-    assert {e.id for e in items} == {"ev_001", "ev_002"}
-    assert all(e.excerpt for e in items)  # dump carries excerpts unlike input.json
+    result = provider.fetch(SCOPE)
+    assert isinstance(result, fathomark_providers.ProviderResult)
+    assert {e.id for e in result.evidence} == {"ev_001", "ev_002"}
+    assert all(e.excerpt for e in result.evidence)  # dump carries excerpts
+    assert result.observations == ()
     assert provider.name == "fixture-edgar"
 
 
@@ -155,12 +157,13 @@ class _RecordedSecTransport:
         return self._text_responses[url]
 
 
-def test_sec_edgar_provider_builds_cutoff_bounded_filing_evidence():
+def test_sec_edgar_provider_builds_cutoff_bounded_filing_evidence_and_metrics():
     provider_type = getattr(fathomark_providers, "SecEdgarEvidenceProvider", None)
     assert provider_type is not None
 
     ticker_url = "https://www.sec.gov/files/company_tickers_exchange.json"
     submissions_url = "https://data.sec.gov/submissions/CIK0000796343.json"
+    companyfacts_url = "https://data.sec.gov/api/xbrl/companyfacts/CIK0000796343.json"
     filing_url = (
         "https://www.sec.gov/Archives/edgar/data/796343/"
         "000079634326000109/adbe-20260529.htm"
@@ -185,6 +188,76 @@ def test_sec_edgar_provider_builds_cutoff_bounded_filing_evidence():
                     }
                 }
             },
+            companyfacts_url: {
+                "facts": {
+                    "us-gaap": {
+                        "RevenueFromContractWithCustomerExcludingAssessedTax": {
+                            "units": {
+                                "USD": [
+                                    {
+                                        "form": "10-Q",
+                                        "filed": "2026-06-15",
+                                        "start": "2025-11-30",
+                                        "end": "2026-05-29",
+                                        "accn": "0000796343-26-000109",
+                                        "val": 10_000_000_000,
+                                    },
+                                    {
+                                        "form": "10-Q",
+                                        "filed": "2026-06-15",
+                                        "start": "2026-02-28",
+                                        "end": "2026-05-29",
+                                        "accn": "0000796343-26-000109",
+                                        "val": 5_870_000_000,
+                                    },
+                                ]
+                            }
+                        },
+                        "SalesRevenueNet": {
+                            "units": {
+                                "USD": [
+                                    {
+                                        "form": "10-Q",
+                                        "filed": "2026-06-15",
+                                        "start": "2026-02-28",
+                                        "end": "2026-05-29",
+                                        "accn": "0000796343-26-000109",
+                                        "val": 5_800_000_000,
+                                    }
+                                ]
+                            }
+                        },
+                        "NetIncomeLoss": {
+                            "units": {
+                                "USD": [
+                                    {
+                                        "form": "10-Q",
+                                        "filed": "2026-06-15",
+                                        "start": "2026-02-28",
+                                        "end": "2026-05-29",
+                                        "accn": "0000796343-26-000109",
+                                        "val": 1_600_000_000,
+                                    }
+                                ]
+                            }
+                        },
+                        "NetCashProvidedByUsedInOperatingActivities": {
+                            "units": {
+                                "USD": [
+                                    {
+                                        "form": "10-Q",
+                                        "filed": "2026-06-15",
+                                        "start": "2026-02-28",
+                                        "end": "2026-05-29",
+                                        "accn": "0000796343-26-000109",
+                                        "val": 2_150_000_000,
+                                    }
+                                ]
+                            }
+                        },
+                    }
+                }
+            },
         },
         {filing_url: "<html><body><p>Revenue grew by 11%.</p></body></html>"},
     )
@@ -194,10 +267,11 @@ def test_sec_edgar_provider_builds_cutoff_bounded_filing_evidence():
         now=lambda: datetime(2026, 9, 3, 12, 0, tzinfo=UTC),
     )
 
-    evidence = provider.fetch(SCOPE)
+    result = provider.fetch(SCOPE)
+    assert isinstance(result, fathomark_providers.ProviderResult)
 
-    assert len(evidence) == 1
-    item = evidence[0]
+    assert len(result.evidence) == 1
+    item = result.evidence[0]
     assert item.id == "sec:0000796343:0000796343-26-000109"
     assert item.source_name == "Adobe Inc. Form 10-Q"
     assert item.source_class == "filings"
@@ -211,7 +285,43 @@ def test_sec_edgar_provider_builds_cutoff_bounded_filing_evidence():
         item.content_hash
         == "sha256:" + hashlib.sha256(b"Revenue grew by 11%.").hexdigest()
     )
-    assert [url for url, _ in transport.json_calls] == [ticker_url, submissions_url]
+    assert [
+        (
+            observation.metric,
+            observation.value,
+            observation.basis,
+            observation.data_date,
+            observation.evidence_id,
+        )
+        for observation in result.observations
+    ] == [
+        (
+            "revenue",
+            5_870_000_000,
+            "quarterly",
+            date(2026, 5, 29),
+            "sec:0000796343:0000796343-26-000109",
+        ),
+        (
+            "net_income",
+            1_600_000_000,
+            "quarterly",
+            date(2026, 5, 29),
+            "sec:0000796343:0000796343-26-000109",
+        ),
+        (
+            "operating_cash_flow",
+            2_150_000_000,
+            "quarterly",
+            date(2026, 5, 29),
+            "sec:0000796343:0000796343-26-000109",
+        ),
+    ]
+    assert [url for url, _ in transport.json_calls] == [
+        ticker_url,
+        submissions_url,
+        companyfacts_url,
+    ]
     assert [url for url, _ in transport.text_calls] == [filing_url]
     assert all(
         headers["User-Agent"] == "Fathomark research@example.com"

@@ -13,11 +13,12 @@ from fathomark_agents.specialists import (
     ValuationAgent,
 )
 from fathomark_core import load_framework
-from fathomark_core.schemas import EvidenceItem, FactorProposal
+from fathomark_core.schemas import EvidenceItem, FactorProposal, MetricObservation
 from fathomark_providers import (
     FakeLLMProvider,
     FixtureEvidenceProvider,
     ProviderError,
+    ProviderResult,
     ReplayLLMProvider,
     prompt_key,
 )
@@ -42,11 +43,14 @@ class _StaticEvidenceProvider:
     name = "secondary-fixture"
     version = "1.0.0"
 
-    def __init__(self, evidence):
+    def __init__(self, evidence, observations=()):
         self._evidence = evidence
+        self._observations = observations
 
     def fetch(self, scope):
-        return self._evidence
+        return ProviderResult(
+            evidence=tuple(self._evidence), observations=tuple(self._observations)
+        )
 
 
 def test_full_run_reaches_draft_matching_golden(seeded_run):
@@ -75,8 +79,10 @@ def test_full_run_reaches_draft_matching_golden(seeded_run):
 def test_collect_normalizes_duplicate_provider_evidence_before_persisting(seeded_run):
     repo, run_id = seeded_run
     primary = FixtureEvidenceProvider(FIXTURE / "provider_dump.json")
-    duplicate = primary.fetch(repo.scope_of(run_id))[0].model_copy(
-        update={"id": "ev_duplicate", "grade": "B"}
+    duplicate = (
+        primary.fetch(repo.scope_of(run_id))
+        .evidence[0]
+        .model_copy(update={"id": "ev_duplicate", "grade": "B"})
     )
     orch = Orchestrator(
         repo,
@@ -91,6 +97,35 @@ def test_collect_normalizes_duplicate_provider_evidence_before_persisting(seeded
     collect.run()
 
     assert [item.id for item in repo.evidence_of(run_id)] == ["ev_001", "ev_002"]
+
+
+def test_collect_persists_metric_observations_with_canonical_evidence(seeded_run):
+    repo, run_id = seeded_run
+    primary = FixtureEvidenceProvider(FIXTURE / "provider_dump.json")
+    observation = MetricObservation(
+        metric="revenue",
+        value=5_870_000_000,
+        unit="USD",
+        currency="USD",
+        basis="quarterly",
+        formula="SEC XBRL us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+        data_date=repo.scope_of(run_id).data_cutoff,
+        evidence_id="ev_001",
+    )
+    orch = Orchestrator(
+        repo,
+        load_framework(ROOT / "frameworks" / "common-stock.yaml"),
+        llm=ReplayLLMProvider(FIXTURE / "llm_cassette.json"),
+        evidence_providers=[primary, _StaticEvidenceProvider([], [observation])],
+    )
+
+    collect = next(
+        step for step in build_default_steps(orch, run_id) if step.name == "collect"
+    )
+    output = collect.run()
+
+    assert repo.metric_observations_of(run_id) == [observation]
+    assert output["metric_observation_count"] == 1
 
 
 def test_resume_after_provider_failure_skips_finished_steps(seeded_run):
