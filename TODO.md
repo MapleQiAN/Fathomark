@@ -94,7 +94,7 @@
 - [x] 实现专业 HTML 模板、证据脚注和离线单文件导出。(基础自包含模板；图表与主题已补，PDF/字体仍待补)
 - [x] 实现因子图、估值敏感性矩阵和评分变化 SVG。(packages/reporting/charts.py)
 - [x] 实现浅色、深色与打印主题。(render_html(theme=...) + SVG theme)
-- [ ] 实现 Playwright/Chromium PDF 导出。
+- [x] 实现 Playwright/Chromium PDF 导出。(render_pdf：print HTML + lazy Playwright；CI 注入 launcher，真实 Chromium 由部署安装)
 - [ ] 在 Docker 镜像中固定中文字体版本。
 - [x] 实现制品 manifest 与内容哈希。(reporting 确定性 builder + artifacts 表/API 持久化与下载)
 - [ ] 增加 Markdown lint、黄金快照和格式交叉核对测试。

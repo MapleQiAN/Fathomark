@@ -22,6 +22,7 @@ from fathomark_reporting.renderers import (
     render_html,
     render_json,
     render_markdown,
+    render_pdf,
 )
 
 __all__ = [
@@ -38,6 +39,7 @@ __all__ = [
     "render_html",
     "render_json",
     "render_markdown",
+    "render_pdf",
     "render_score_change",
     "render_valuation_sensitivity",
 ]

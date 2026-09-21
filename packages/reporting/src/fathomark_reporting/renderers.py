@@ -1,6 +1,7 @@
 """Deterministic report renderers with one validated input model."""
 
 import json
+from collections.abc import Callable
 from html import escape
 from typing import Literal
 from urllib.parse import urlsplit
@@ -288,3 +289,46 @@ def render_html(report: ReportModel, *, theme: HTMLTheme = "auto") -> str:
         lines.append("</ul></section>")
     lines.extend(["</main>", "</body>", "</html>", ""])
     return "\n".join(lines)
+
+
+def _playwright_pdf(html: str, executable_path: str | None) -> bytes:
+    try:
+        from playwright.sync_api import sync_playwright
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "PDF export requires the optional 'playwright' package and a Chromium binary"
+        ) from exc
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=executable_path)
+        try:
+            page = browser.new_page()
+            page.set_content(html, wait_until="load")
+            page.emulate_media(media="print")
+            return page.pdf(
+                format="A4",
+                print_background=True,
+                prefer_css_page_size=True,
+            )
+        finally:
+            browser.close()
+
+
+def render_pdf(
+    report: ReportModel,
+    *,
+    chromium_path: str | None = None,
+    launcher: Callable[[str, str | None], bytes] | None = None,
+) -> bytes:
+    """Render the print-theme HTML through Playwright/Chromium.
+
+    ``launcher`` is a narrow seam for deterministic tests or a deployment's
+    browser wrapper. Without it, the optional Playwright dependency is loaded
+    lazily so JSON/Markdown/HTML users do not need a browser installed.
+    """
+    _assert_report(report)
+    html = render_html(report, theme="print")
+    pdf = (launcher or _playwright_pdf)(html, chromium_path)
+    if not isinstance(pdf, bytes):
+        raise TypeError("PDF launcher must return bytes")
+    return pdf
