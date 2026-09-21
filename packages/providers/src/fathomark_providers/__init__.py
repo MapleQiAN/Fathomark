@@ -1,8 +1,12 @@
 """Provider protocols and offline test doubles."""
 
 from fathomark_providers.evidence import (
+    EvidenceNormalizationError,
+    EvidenceNormalizationResult,
+    EvidenceNormalizer,
     EvidenceProvider,
     FixtureEvidenceProvider,
+    SecEdgarEvidenceProvider,
 )
 from fathomark_providers.fake import (
     FakeLLMProvider,
@@ -18,6 +22,9 @@ from fathomark_providers.llm import (
 )
 
 __all__ = [
+    "EvidenceNormalizationError",
+    "EvidenceNormalizationResult",
+    "EvidenceNormalizer",
     "EvidenceProvider",
     "FakeLLMProvider",
     "FixtureEvidenceProvider",
@@ -27,5 +34,6 @@ __all__ = [
     "ProviderError",
     "RecordingLLMProvider",
     "ReplayLLMProvider",
+    "SecEdgarEvidenceProvider",
     "prompt_key",
 ]

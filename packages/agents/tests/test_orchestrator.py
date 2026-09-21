@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from fathomark_agents import Orchestrator, OrchestratorError
 from fathomark_agents.financial_agent import FinancialAgent
+from fathomark_agents.orchestrator import build_default_steps
 from fathomark_agents.specialist_agent import build_prompt
 from fathomark_agents.specialists import (
     BusinessAgent,
@@ -37,6 +38,17 @@ def _orchestrator(repo, llm, **kwargs):
     )
 
 
+class _StaticEvidenceProvider:
+    name = "secondary-fixture"
+    version = "1.0.0"
+
+    def __init__(self, evidence):
+        self._evidence = evidence
+
+    def fetch(self, scope):
+        return self._evidence
+
+
 def test_full_run_reaches_draft_matching_golden(seeded_run):
     repo, run_id = seeded_run
     state = _orchestrator(
@@ -58,6 +70,27 @@ def test_full_run_reaches_draft_matching_golden(seeded_run):
         "compute",
     }
     assert all(s.status == "succeeded" for s in steps.values())
+
+
+def test_collect_normalizes_duplicate_provider_evidence_before_persisting(seeded_run):
+    repo, run_id = seeded_run
+    primary = FixtureEvidenceProvider(FIXTURE / "provider_dump.json")
+    duplicate = primary.fetch(repo.scope_of(run_id))[0].model_copy(
+        update={"id": "ev_duplicate", "grade": "B"}
+    )
+    orch = Orchestrator(
+        repo,
+        load_framework(ROOT / "frameworks" / "common-stock.yaml"),
+        llm=ReplayLLMProvider(FIXTURE / "llm_cassette.json"),
+        evidence_providers=[primary, _StaticEvidenceProvider([duplicate])],
+    )
+
+    collect = next(
+        step for step in build_default_steps(orch, run_id) if step.name == "collect"
+    )
+    collect.run()
+
+    assert [item.id for item in repo.evidence_of(run_id)] == ["ev_001", "ev_002"]
 
 
 def test_resume_after_provider_failure_skips_finished_steps(seeded_run):

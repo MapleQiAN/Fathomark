@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from fathomark_core import evaluate
 from fathomark_core.framework import Framework
 from fathomark_providers import (
+    EvidenceNormalizer,
     EvidenceProvider,
     LLMProvider,
     LLMRequest,
@@ -315,16 +316,18 @@ def build_default_steps(orch: Orchestrator, run_id: str) -> list[StepSpec]:
         fetched = []
         for provider in orch.evidence_providers:
             fetched.extend(provider.fetch(scope))
-        # Design §14: nothing published after the data cutoff enters scoring.
-        usable = [e for e in fetched if e.published_date <= scope.data_cutoff]
-        if not usable:
+        normalized = EvidenceNormalizer().normalize(
+            fetched, data_cutoff=scope.data_cutoff
+        )
+        if not normalized.evidence:
             raise ProviderError(
                 "no usable evidence after data_cutoff filter", retriable=False
             )
-        repo.add_evidence(run_id, usable)
+        repo.add_evidence(run_id, list(normalized.evidence))
         return {
-            "evidence_ids": sorted(e.id for e in usable),
-            "dropped": len(fetched) - len(usable),
+            "evidence_ids": [e.id for e in normalized.evidence],
+            "dropped_after_cutoff": normalized.dropped_after_cutoff,
+            "dropped_duplicates": normalized.dropped_duplicates,
         }
 
     def make_agent_step(agent_cls) -> Callable[[], dict]:

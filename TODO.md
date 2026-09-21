@@ -59,10 +59,10 @@
 - [ ] 实现 OpenAI Provider。
 - [ ] 实现 Anthropic Provider。
 - [ ] 实现 OpenAI-compatible Provider。
-- [ ] 实现 SEC EDGAR/XBRL Provider。
+- [ ] 实现 SEC EDGAR/XBRL Provider。（SEC EDGAR 10-K/10-Q 证据采集已实现；XBRL 指标提取仍待补。）
 - [ ] 实现公司 IR 文档 Provider。
 - [ ] 定义行情 Provider 协议并实现一个可替换的公开数据适配器。
-- [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。
+- [ ] 实现 Evidence Normalizer、去重、日期/单位/币种标准化。（证据截止日过滤、内容去重与冲突 ID 拒绝已实现；指标日期、单位和币种标准化仍待补。）
 - [x] 实现 Scope Agent。(packages/agents ScopeAgent)
 - [x] 实现 Business Agent。(BusinessAgent：business_moat，cassette 回放)
 - [x] 实现 Financial Agent。(financial_health + earnings_quality，录制 cassette 回放)

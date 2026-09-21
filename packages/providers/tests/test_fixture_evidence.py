@@ -1,8 +1,11 @@
-from datetime import date
+import hashlib
+from datetime import UTC, date, datetime
 from pathlib import Path
 
-from fathomark_core.schemas import ScopeSnapshot
-from fathomark_providers import FixtureEvidenceProvider
+import fathomark_providers
+import pytest
+from fathomark_core.schemas import EvidenceItem, ScopeSnapshot
+from fathomark_providers import EvidenceNormalizationError, FixtureEvidenceProvider
 
 ROOT = Path(__file__).parents[3]
 
@@ -25,3 +28,160 @@ def test_fixture_provider_returns_typed_evidence():
     assert {e.id for e in items} == {"ev_001", "ev_002"}
     assert all(e.excerpt for e in items)  # dump carries excerpts unlike input.json
     assert provider.name == "fixture-edgar"
+
+
+def _evidence(
+    evidence_id: str,
+    *,
+    content_hash: str,
+    published_date: date,
+    grade: str = "B",
+) -> EvidenceItem:
+    return EvidenceItem(
+        id=evidence_id,
+        source_name=f"Source {evidence_id}",
+        source_class="filings",
+        url=f"https://example.test/{evidence_id}",
+        published_date=published_date,
+        data_period_end=None,
+        accessed_at=datetime(2026, 9, 3, 12, 0, tzinfo=UTC),
+        grade=grade,
+        content_hash=content_hash,
+        excerpt="Recorded evidence.",
+    )
+
+
+def test_evidence_normalizer_filters_cutoff_and_keeps_best_duplicate():
+    normalizer_type = getattr(fathomark_providers, "EvidenceNormalizer", None)
+    assert normalizer_type is not None
+
+    result = normalizer_type().normalize(
+        [
+            _evidence(
+                "after_cutoff",
+                content_hash="sha256:after",
+                published_date=date(2026, 9, 4),
+            ),
+            _evidence(
+                "duplicate_b",
+                content_hash="sha256:duplicate",
+                published_date=date(2026, 9, 2),
+                grade="B",
+            ),
+            _evidence(
+                "duplicate_a",
+                content_hash="sha256:duplicate",
+                published_date=date(2026, 9, 1),
+                grade="A",
+            ),
+            _evidence(
+                "unique",
+                content_hash="sha256:unique",
+                published_date=date(2026, 9, 3),
+            ),
+        ],
+        data_cutoff=date(2026, 9, 3),
+    )
+
+    assert [item.id for item in result.evidence] == ["duplicate_a", "unique"]
+    assert result.dropped_after_cutoff == 1
+    assert result.dropped_duplicates == 1
+
+
+def test_evidence_normalizer_rejects_one_id_with_conflicting_content():
+    with pytest.raises(EvidenceNormalizationError, match="conflicting content"):
+        fathomark_providers.EvidenceNormalizer().normalize(
+            [
+                _evidence(
+                    "ev_conflict",
+                    content_hash="sha256:first",
+                    published_date=date(2026, 9, 1),
+                ),
+                _evidence(
+                    "ev_conflict",
+                    content_hash="sha256:second",
+                    published_date=date(2026, 9, 2),
+                ),
+            ],
+            data_cutoff=date(2026, 9, 3),
+        )
+
+
+class _RecordedSecTransport:
+    def __init__(self, json_responses, text_responses):
+        self._json_responses = json_responses
+        self._text_responses = text_responses
+        self.json_calls = []
+        self.text_calls = []
+
+    def get_json(self, url, *, headers):
+        self.json_calls.append((url, headers))
+        return self._json_responses[url]
+
+    def get_text(self, url, *, headers):
+        self.text_calls.append((url, headers))
+        return self._text_responses[url]
+
+
+def test_sec_edgar_provider_builds_cutoff_bounded_filing_evidence():
+    provider_type = getattr(fathomark_providers, "SecEdgarEvidenceProvider", None)
+    assert provider_type is not None
+
+    ticker_url = "https://www.sec.gov/files/company_tickers_exchange.json"
+    submissions_url = "https://data.sec.gov/submissions/CIK0000796343.json"
+    filing_url = (
+        "https://www.sec.gov/Archives/edgar/data/796343/"
+        "000079634326000109/adbe-20260529.htm"
+    )
+    transport = _RecordedSecTransport(
+        {
+            ticker_url: {
+                "fields": ["cik", "name", "ticker", "exchange"],
+                "data": [[796343, "Adobe Inc.", "ADBE", "Nasdaq"]],
+            },
+            submissions_url: {
+                "filings": {
+                    "recent": {
+                        "form": ["10-Q", "8-K"],
+                        "filingDate": ["2026-06-15", "2026-09-04"],
+                        "reportDate": ["2026-05-29", "2026-09-03"],
+                        "accessionNumber": [
+                            "0000796343-26-000109",
+                            "0000796343-26-000120",
+                        ],
+                        "primaryDocument": ["adbe-20260529.htm", "adbe-8k.htm"],
+                    }
+                }
+            },
+        },
+        {filing_url: "<html><body><p>Revenue grew by 11%.</p></body></html>"},
+    )
+    provider = provider_type(
+        user_agent="Fathomark research@example.com",
+        transport=transport,
+        now=lambda: datetime(2026, 9, 3, 12, 0, tzinfo=UTC),
+    )
+
+    evidence = provider.fetch(SCOPE)
+
+    assert len(evidence) == 1
+    item = evidence[0]
+    assert item.id == "sec:0000796343:0000796343-26-000109"
+    assert item.source_name == "Adobe Inc. Form 10-Q"
+    assert item.source_class == "filings"
+    assert item.url == filing_url
+    assert item.published_date == date(2026, 6, 15)
+    assert item.data_period_end == date(2026, 5, 29)
+    assert item.accessed_at == datetime(2026, 9, 3, 12, 0, tzinfo=UTC)
+    assert item.grade == "A"
+    assert item.excerpt == "Revenue grew by 11%."
+    assert (
+        item.content_hash
+        == "sha256:" + hashlib.sha256(b"Revenue grew by 11%.").hexdigest()
+    )
+    assert [url for url, _ in transport.json_calls] == [ticker_url, submissions_url]
+    assert [url for url, _ in transport.text_calls] == [filing_url]
+    assert all(
+        headers["User-Agent"] == "Fathomark research@example.com"
+        for _, headers in [*transport.json_calls, *transport.text_calls]
+    )
