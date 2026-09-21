@@ -2,9 +2,12 @@
 
 import json
 from html import escape
+from typing import Literal
 from urllib.parse import urlsplit
 
 from fathomark_reporting.model import ReportModel
+
+HTMLTheme = Literal["auto", "light", "dark", "print"]
 
 
 def _assert_report(report: ReportModel) -> None:
@@ -171,26 +174,50 @@ def _html_url(url: str | None) -> str:
     return f'<a href="{safe_url}" rel="noreferrer">Source URL</a>'
 
 
-def render_html(report: ReportModel) -> str:
+def _html_theme_css(theme: HTMLTheme) -> list[str]:
+    palettes = {
+        "light": ("#fff", "#17212b", "#e8eef2"),
+        "dark": ("#17212b", "#f4f7f9", "#33414d"),
+        "print": ("#fff", "#000", "#fff"),
+        "auto": ("#fff", "#17212b", "#e8eef2"),
+    }
+    try:
+        background, foreground, table_header = palettes[theme]
+    except KeyError as exc:
+        raise ValueError(f"unknown HTML theme: {theme}") from exc
+    lines = [
+        f":root{{color-scheme:{'light dark' if theme == 'auto' else theme};font-family:system-ui,sans-serif;line-height:1.5;--report-background:{background};--report-foreground:{foreground};--report-table-header:{table_header}}}",
+        "body{max-width:1100px;margin:0 auto;padding:2rem;background:var(--report-background);color:var(--report-foreground)}",
+        "table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}",
+        "th,td{border:1px solid #b8c4cc;padding:.5rem;text-align:left;vertical-align:top}",
+        "th{background:var(--report-table-header)}",
+        ".status{border:2px solid #b7791f;padding:.75rem;font-weight:700}",
+        ".hash{font-family:ui-monospace,monospace;overflow-wrap:anywhere}",
+    ]
+    if theme == "auto":
+        lines.append(
+            "@media(prefers-color-scheme:dark){:root{--report-background:#17212b;--report-foreground:#f4f7f9;--report-table-header:#33414d}}"
+        )
+    lines.append(
+        "@media print{body{max-width:none;padding:0;color:#000;background:#fff}.status{break-inside:avoid}table{break-inside:auto}tr{break-inside:avoid;break-after:auto}}"
+    )
+    return lines
+
+
+def render_html(report: ReportModel, *, theme: HTMLTheme = "auto") -> str:
     """Render a self-contained HTML report with escaped untrusted content."""
     _assert_report(report)
     status_label = "DRAFT — NOT APPROVED" if report.status == "draft" else "APPROVED"
+    theme_css = _html_theme_css(theme)
     lines = [
         "<!doctype html>",
-        '<html lang="en">',
+        f'<html lang="en" data-theme="{_html(theme)}">',
         "<head>",
         '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         f"<title>{_html(report.scope.symbol)} Research Report</title>",
         "<style>",
-        ":root{color-scheme:light dark;font-family:system-ui,sans-serif;line-height:1.5}",
-        "body{max-width:1100px;margin:0 auto;padding:2rem;background:#fff;color:#17212b}",
-        "@media(prefers-color-scheme:dark){body{background:#17212b;color:#f4f7f9}th{background:#33414d}}",
-        "table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}",
-        "th,td{border:1px solid #b8c4cc;padding:.5rem;text-align:left;vertical-align:top}",
-        "th{background:#e8eef2}",
-        ".status{border:2px solid #b7791f;padding:.75rem;font-weight:700}",
-        ".hash{font-family:ui-monospace,monospace;overflow-wrap:anywhere}",
+        *theme_css,
         "</style>",
         "</head>",
         "<body>",
