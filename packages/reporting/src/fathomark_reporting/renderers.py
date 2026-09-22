@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from fathomark_reporting.model import ReportModel
 
 HTMLTheme = Literal["auto", "light", "dark", "print"]
+ReportArtifact = str | bytes
 
 
 def _assert_report(report: ReportModel) -> None:
@@ -187,11 +188,13 @@ def _html_theme_css(theme: HTMLTheme) -> list[str]:
     except KeyError as exc:
         raise ValueError(f"unknown HTML theme: {theme}") from exc
     lines = [
-        f":root{{color-scheme:{'light dark' if theme == 'auto' else theme};font-family:system-ui,sans-serif;line-height:1.5;--report-background:{background};--report-foreground:{foreground};--report-table-header:{table_header}}}",
+        f":root{{color-scheme:{'light dark' if theme == 'auto' else theme};font-family:'Noto Sans CJK SC','Noto Sans',system-ui,sans-serif;line-height:1.5;--report-background:{background};--report-foreground:{foreground};--report-table-header:{table_header}}}",
         "body{max-width:1100px;margin:0 auto;padding:2rem;background:var(--report-background);color:var(--report-foreground)}",
         "table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}",
         "th,td{border:1px solid #b8c4cc;padding:.5rem;text-align:left;vertical-align:top}",
         "th{background:var(--report-table-header)}",
+        ".table-wrap{max-width:100%;overflow-x:auto}",
+        "th,td{overflow-wrap:anywhere}",
         ".status{border:2px solid #b7791f;padding:.75rem;font-weight:700}",
         ".hash{font-family:ui-monospace,monospace;overflow-wrap:anywhere}",
     ]
@@ -201,6 +204,9 @@ def _html_theme_css(theme: HTMLTheme) -> list[str]:
         )
     lines.append(
         "@media print{body{max-width:none;padding:0;color:#000;background:#fff}.status{break-inside:avoid}table{break-inside:auto}tr{break-inside:avoid;break-after:auto}}"
+    )
+    lines.append(
+        "@media(max-width:640px){body{padding:1rem}h1{font-size:1.5rem}th,td{padding:.35rem;min-width:7rem}}"
     )
     return lines
 
@@ -232,6 +238,7 @@ def render_html(report: ReportModel, *, theme: HTMLTheme = "auto") -> str:
         f"<p>Exchange: <strong>{_html(report.scope.exchange)}</strong>; role: <strong>{_html(report.scope.research_role)}</strong>; horizon: <strong>{_html(report.scope.horizon)}</strong>; research date: <strong>{_html(report.scope.research_date)}</strong>; data cutoff: <strong>{_html(report.scope.data_cutoff)}</strong>.</p>",
         f"<p>Overall confidence: <strong>{_html(report.overall_confidence)}</strong>.</p></section>",
         '<section aria-labelledby="lenses"><h2 id="lenses">Lens results</h2>',
+        '<div class="table-wrap">',
         '<table><thead><tr><th scope="col">Lens</th><th scope="col">Total</th><th scope="col">Rating</th><th scope="col">Tactical state</th><th scope="col">Flagged</th><th scope="col">Vetoed</th><th scope="col">Veto reasons</th></tr></thead><tbody>',
     ]
     lines.extend(
@@ -248,8 +255,9 @@ def render_html(report: ReportModel, *, theme: HTMLTheme = "auto") -> str:
     )
     lines.extend(
         [
-            "</tbody></table></section>",
+            "</tbody></table></div></section>",
             '<section aria-labelledby="factors"><h2 id="factors">Factor proposals</h2>',
+            '<div class="table-wrap">',
             '<table><thead><tr><th scope="col">Factor</th><th scope="col">Score</th><th scope="col">Confidence</th><th scope="col">Supporting evidence</th><th scope="col">Counter evidence</th><th scope="col">Missing data</th><th scope="col">Rationale</th></tr></thead><tbody>',
         ]
     )
@@ -267,7 +275,7 @@ def render_html(report: ReportModel, *, theme: HTMLTheme = "auto") -> str:
     )
     lines.extend(
         [
-            "</tbody></table></section>",
+            "</tbody></table></div></section>",
             '<section aria-labelledby="evidence"><h2 id="evidence">Evidence</h2><ol>',
         ]
     )
@@ -331,4 +339,32 @@ def render_pdf(
     pdf = (launcher or _playwright_pdf)(html, chromium_path)
     if not isinstance(pdf, bytes):
         raise TypeError("PDF launcher must return bytes")
+    if not pdf.startswith(b"%PDF-"):
+        raise ValueError("PDF launcher returned bytes without a PDF header")
     return pdf
+
+
+def render_report_bundle(
+    report: ReportModel,
+    *,
+    html_theme: HTMLTheme = "light",
+    chromium_path: str | None = None,
+    launcher: Callable[[str, str | None], bytes] | None = None,
+) -> dict[str, ReportArtifact]:
+    """Render all report formats from the same validated report model.
+
+    The PDF is intentionally the only browser-backed artifact.  Callers can
+    inject a launcher in tests or supply the deployment's Chromium path while
+    JSON, Markdown and HTML remain usable without the optional browser extra.
+    """
+    _assert_report(report)
+    return {
+        "report.json": render_json(report),
+        "report.md": render_markdown(report),
+        "report.html": render_html(report, theme=html_theme),
+        "report.pdf": render_pdf(
+            report,
+            chromium_path=chromium_path,
+            launcher=launcher,
+        ),
+    }

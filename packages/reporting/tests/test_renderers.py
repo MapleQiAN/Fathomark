@@ -11,6 +11,7 @@ from fathomark_reporting.renderers import (
     render_json,
     render_markdown,
     render_pdf,
+    render_report_bundle,
 )
 
 ROOT = Path(__file__).parents[3]
@@ -170,7 +171,7 @@ def test_report_formats_match_golden_hashes_and_cross_format_identity():
     expected_hashes = {
         "json": "sha256:4b6b4efd8656cd1bf8ae873de8bec499aa92fdf652a6e3fea0bb3c52218f8f51",
         "markdown": "sha256:c218c2631a147f2532fd553764a923e1145d8b88e55d849086c9f293059a550a",
-        "html": "sha256:41b8e07c4b3eda274712f77a32d23027b777835e0908f7a8d7edbdff62a7dda0",
+        "html": "sha256:4419e309047b530d32a7650c4980e89dac2420006b0c5995ed250ffdd6081eee",
     }
     assert {
         name: "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
@@ -210,3 +211,39 @@ def test_pdf_renderer_uses_print_html_and_injected_chromium_launcher():
     assert pdf == b"%PDF-recorded"
     assert 'data-theme="print"' in captured["html"]
     assert captured["executable_path"] == "/opt/chromium"
+
+
+def test_report_bundle_uses_one_report_model_for_all_formats():
+    report = _report()
+    captured = {}
+
+    def launcher(html, executable_path):
+        captured["html"] = html
+        return b"%PDF-1.7 recorded"
+
+    bundle = render_report_bundle(report, launcher=launcher)
+
+    assert set(bundle) == {"report.json", "report.md", "report.html", "report.pdf"}
+    assert json.loads(bundle["report.json"])["model_hash"] == report.model_hash
+    for item in report.evidence:
+        assert item.id in bundle["report.md"]
+        assert item.id in bundle["report.html"]
+        assert item.id in captured["html"]
+    for rendered in (
+        bundle["report.json"],
+        bundle["report.md"],
+        bundle["report.html"],
+        captured["html"],
+    ):
+        assert report.snapshot_hash in rendered
+        assert report.model_hash in rendered
+    assert bundle["report.pdf"].startswith(b"%PDF-")
+
+
+def test_html_renderer_has_responsive_table_boundary():
+    html = render_html(_report(), theme="light")
+
+    assert "overflow-x:auto" in html
+    assert "overflow-wrap:anywhere" in html
+    assert "@media(max-width:640px)" in html
+    assert html.count('<div class="table-wrap">') == html.count("</div></section>")

@@ -7,10 +7,19 @@ ENV UV_COMPILE_BYTECODE=1 \
     FATHOMARK_DATA_DIR=/data \
     PYTHONDONTWRITEBYTECODE=1
 
+ARG FATHOMARK_NOTO_CJK_VERSION=1:20220127+repack1-1
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+        "fonts-noto-cjk=${FATHOMARK_NOTO_CJK_VERSION}" \
+        fontconfig \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml uv.lock ./
 COPY packages ./packages
 COPY frameworks ./frameworks
 COPY examples ./examples
+COPY scripts ./scripts
 
 RUN uv sync --frozen --no-dev --extra postgres
 RUN mkdir -p /data
