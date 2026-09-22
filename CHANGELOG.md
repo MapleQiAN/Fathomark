@@ -17,6 +17,9 @@ capabilities rather than live-provider or production-deployment guarantees.
 - deterministic JSON, Markdown, HTML, SVG and optional Playwright/Chromium PDF
   report outputs plus content-addressed manifests and a four-format bundle
   contract;
+- a self-contained premium HTML research reader with grouped navigation,
+  quick/full modes, keyboard search, mobile table cards, reading resume and
+  date-based freshness labels;
 - Docker/SQLite quickstart with a pinned Noto CJK font, optional PostgreSQL
   Compose, the `fathomark` CLI, plugin auth/template scaffolding, CI migration
   checks, CycloneDX SBOM and `pip-audit` scanning.

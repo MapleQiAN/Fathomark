@@ -12,6 +12,22 @@ break rules. The SVG helpers in `fathomark_reporting.charts` provide
 deterministic factor bars, valuation sensitivity matrices, and before/after
 score deltas without a browser or charting dependency.
 
+The `premium-reader-2` HTML template keeps the report model immutable while
+adding reader-side navigation. Its table of contents groups sections under
+结论、公司、估值、风险与监控; readers can switch between a core quick read and
+the complete report. Search supports `Cmd/Ctrl + K`, reports the matching
+section, and closes with `Esc`. The browser stores theme, reading mode, current
+section and scroll position under a key derived from `model_hash`. On narrow
+screens, tables become labelled record cards and a fixed previous/catalog/next
+control replaces the desktop table of contents.
+
+Freshness is presentation metadata calculated in the browser from
+`scope.research_date`: `Fresh` for 0–30 days, `Review` for 31–90 days, and
+`Stale` after 90 days. It does not change scores, ratings, approval state or
+artifact identity. Structured values missing from `ReportModel`, including a
+price range or scenario CAGR, render as `NR`; the template never infers them
+from narrative text.
+
 ```python
 from fathomark_reporting import (
     build_artifact_manifest,
@@ -25,7 +41,7 @@ html = render_html(report, theme="print")
 factor_svg = render_factor_chart(report, theme="dark")
 pdf = render_pdf(report)
 bundle = render_report_bundle(report)
-manifest = build_artifact_manifest(report, bundle, template_version="report-1")
+manifest = build_artifact_manifest(report, bundle, template_version="report-2")
 ```
 
 `render_pdf` loads Playwright lazily and sends the print-theme HTML through

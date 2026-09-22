@@ -2,11 +2,11 @@
 
 import json
 from collections.abc import Callable
-from html import escape
 from typing import Literal
 from urllib.parse import urlsplit
 
 from fathomark_reporting.model import ReportModel
+from fathomark_reporting.premium_html import render_premium_html
 
 HTMLTheme = Literal["auto", "light", "dark", "print"]
 ReportArtifact = str | bytes
@@ -157,146 +157,10 @@ def render_markdown(report: ReportModel) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _html(value: object) -> str:
-    return escape(str(value), quote=True)
-
-
-def _html_refs(ids: tuple[str, ...]) -> str:
-    return (
-        ", ".join(f'<a href="#{_html(item)}">{_html(item)}</a>' for item in ids) or "—"
-    )
-
-
-def _html_url(url: str | None) -> str:
-    if not url:
-        return ""
-    if not _valid_url(url):
-        return f"<span>{_html(url)}</span>"
-    safe_url = _html(url)
-    return f'<a href="{safe_url}" rel="noreferrer">Source URL</a>'
-
-
-def _html_theme_css(theme: HTMLTheme) -> list[str]:
-    palettes = {
-        "light": ("#fff", "#17212b", "#e8eef2"),
-        "dark": ("#17212b", "#f4f7f9", "#33414d"),
-        "print": ("#fff", "#000", "#fff"),
-        "auto": ("#fff", "#17212b", "#e8eef2"),
-    }
-    try:
-        background, foreground, table_header = palettes[theme]
-    except KeyError as exc:
-        raise ValueError(f"unknown HTML theme: {theme}") from exc
-    lines = [
-        f":root{{color-scheme:{'light dark' if theme == 'auto' else theme};font-family:'Noto Sans CJK SC','Noto Sans',system-ui,sans-serif;line-height:1.5;--report-background:{background};--report-foreground:{foreground};--report-table-header:{table_header}}}",
-        "body{max-width:1100px;margin:0 auto;padding:2rem;background:var(--report-background);color:var(--report-foreground)}",
-        "table{border-collapse:collapse;width:100%;margin:1rem 0 2rem}",
-        "th,td{border:1px solid #b8c4cc;padding:.5rem;text-align:left;vertical-align:top}",
-        "th{background:var(--report-table-header)}",
-        ".table-wrap{max-width:100%;overflow-x:auto}",
-        "th,td{overflow-wrap:anywhere}",
-        ".status{border:2px solid #b7791f;padding:.75rem;font-weight:700}",
-        ".hash{font-family:ui-monospace,monospace;overflow-wrap:anywhere}",
-    ]
-    if theme == "auto":
-        lines.append(
-            "@media(prefers-color-scheme:dark){:root{--report-background:#17212b;--report-foreground:#f4f7f9;--report-table-header:#33414d}}"
-        )
-    lines.append(
-        "@media print{body{max-width:none;padding:0;color:#000;background:#fff}.status{break-inside:avoid}table{break-inside:auto}tr{break-inside:avoid;break-after:auto}}"
-    )
-    lines.append(
-        "@media(max-width:640px){body{padding:1rem}h1{font-size:1.5rem}th,td{padding:.35rem;min-width:7rem}}"
-    )
-    return lines
-
-
 def render_html(report: ReportModel, *, theme: HTMLTheme = "auto") -> str:
     """Render a self-contained HTML report with escaped untrusted content."""
     _assert_report(report)
-    status_label = "DRAFT — NOT APPROVED" if report.status == "draft" else "APPROVED"
-    theme_css = _html_theme_css(theme)
-    lines = [
-        "<!doctype html>",
-        f'<html lang="en" data-theme="{_html(theme)}">',
-        "<head>",
-        '<meta charset="utf-8">',
-        '<meta name="viewport" content="width=device-width, initial-scale=1">',
-        f"<title>{_html(report.scope.symbol)} Research Report</title>",
-        "<style>",
-        *theme_css,
-        "</style>",
-        "</head>",
-        "<body>",
-        f"<header><h1>{_html(report.scope.symbol)} Research Report</h1>",
-        f'<p class="status">{_html(status_label)}</p>',
-        f'<p class="hash">Report model: {_html(report.model_hash)}</p>',
-        f'<p class="hash">Snapshot: {_html(report.snapshot_hash)}</p>',
-        f"<p>Framework: <strong>{_html(report.scope.framework_ref)}</strong></p></header>",
-        "<main>",
-        '<section aria-labelledby="scope"><h2 id="scope">Scope</h2>',
-        f"<p>Exchange: <strong>{_html(report.scope.exchange)}</strong>; role: <strong>{_html(report.scope.research_role)}</strong>; horizon: <strong>{_html(report.scope.horizon)}</strong>; research date: <strong>{_html(report.scope.research_date)}</strong>; data cutoff: <strong>{_html(report.scope.data_cutoff)}</strong>.</p>",
-        f"<p>Overall confidence: <strong>{_html(report.overall_confidence)}</strong>.</p></section>",
-        '<section aria-labelledby="lenses"><h2 id="lenses">Lens results</h2>',
-        '<div class="table-wrap">',
-        '<table><thead><tr><th scope="col">Lens</th><th scope="col">Total</th><th scope="col">Rating</th><th scope="col">Tactical state</th><th scope="col">Flagged</th><th scope="col">Vetoed</th><th scope="col">Veto reasons</th></tr></thead><tbody>',
-    ]
-    lines.extend(
-        "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
-            _html(lens.lens),
-            _html(lens.total if lens.total is not None else "NR"),
-            _html(lens.rating),
-            _html(lens.tactical_state or "—"),
-            "yes" if lens.flagged else "no",
-            "yes" if lens.vetoed else "no",
-            _html("; ".join(lens.veto_reasons) or "—"),
-        )
-        for lens in report.lenses
-    )
-    lines.extend(
-        [
-            "</tbody></table></div></section>",
-            '<section aria-labelledby="factors"><h2 id="factors">Factor proposals</h2>',
-            '<div class="table-wrap">',
-            '<table><thead><tr><th scope="col">Factor</th><th scope="col">Score</th><th scope="col">Confidence</th><th scope="col">Supporting evidence</th><th scope="col">Counter evidence</th><th scope="col">Missing data</th><th scope="col">Rationale</th></tr></thead><tbody>',
-        ]
-    )
-    lines.extend(
-        "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
-            _html(factor.factor),
-            _html(factor.proposed_score),
-            _html(factor.confidence),
-            _html_refs(factor.evidence_ids),
-            _html_refs(factor.counter_evidence_ids),
-            _html("; ".join(factor.missing_data) or "—"),
-            _html(factor.rationale),
-        )
-        for factor in report.factors
-    )
-    lines.extend(
-        [
-            "</tbody></table></div></section>",
-            '<section aria-labelledby="evidence"><h2 id="evidence">Evidence</h2><ol>',
-        ]
-    )
-    lines.extend(
-        f'<li id="{_html(item.id)}"><strong>{_html(item.id)}</strong>: {_html(item.source_name)} ({_html(item.published_date)}, grade {_html(item.grade)})'
-        f"{f' — {_html(item.excerpt)}' if item.excerpt else ''}"
-        f"{f' — {_html_url(item.url)}' if item.url else ''}</li>"
-        for item in report.evidence
-    )
-    lines.extend(["</ol></section>"])
-    if report.review_issues:
-        lines.append(
-            '<section aria-labelledby="issues"><h2 id="issues">Review issues</h2><ul>'
-        )
-        lines.extend(
-            f"<li><strong>{_html(issue.category)}</strong> ({'blocking' if issue.blocking else 'non-blocking'}): {_html(issue.rationale)} ({_html_refs(issue.evidence_ids)})</li>"
-            for issue in report.review_issues
-        )
-        lines.append("</ul></section>")
-    lines.extend(["</main>", "</body>", "</html>", ""])
-    return "\n".join(lines)
+    return render_premium_html(report, theme=theme)
 
 
 def _playwright_pdf(html: str, executable_path: str | None) -> bytes:

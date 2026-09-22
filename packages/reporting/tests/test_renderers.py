@@ -171,7 +171,7 @@ def test_report_formats_match_golden_hashes_and_cross_format_identity():
     expected_hashes = {
         "json": "sha256:4b6b4efd8656cd1bf8ae873de8bec499aa92fdf652a6e3fea0bb3c52218f8f51",
         "markdown": "sha256:c218c2631a147f2532fd553764a923e1145d8b88e55d849086c9f293059a550a",
-        "html": "sha256:4419e309047b530d32a7650c4980e89dac2420006b0c5995ed250ffdd6081eee",
+        "html": "sha256:b3537a4cd12d700778640321cef7c8f9c5329b1d56aa5b094bf6ef1dc2967221",
     }
     assert {
         name: "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
@@ -245,5 +245,42 @@ def test_html_renderer_has_responsive_table_boundary():
 
     assert "overflow-x:auto" in html
     assert "overflow-wrap:anywhere" in html
-    assert "@media(max-width:640px)" in html
-    assert html.count('<div class="table-wrap">') == html.count("</div></section>")
+    assert "@media(max-width:720px)" in html
+    assert html.count('<div class="table-wrap">') == 2
+    assert "cell.setAttribute('data-label'" in html
+
+
+def test_html_renderer_exposes_grouped_reader_and_quick_mode_contract():
+    html = render_html(_report(), theme="light")
+
+    for group in ("结论", "公司", "估值", "风险与监控"):
+        assert f'data-toc-group="{group}"' in html
+    assert 'data-reading-mode="quick"' in html
+    assert 'data-reading-mode="full"' in html
+    assert 'data-quick="true"' in html
+    assert 'data-quick="false"' in html
+    assert 'id="executive-overview"' in html
+    assert 'href="#lens-results"' in html
+    assert 'href="#valuation-analysis"' in html
+    assert 'href="#risk-monitoring"' in html
+
+
+def test_html_renderer_exposes_toolbar_search_resume_and_mobile_contracts():
+    html = render_html(_report(), theme="auto")
+
+    assert 'data-action="search"' in html
+    assert 'data-action="theme"' in html
+    assert 'data-action="more"' in html
+    assert 'data-action="print"' in html
+    assert 'data-action="top"' in html
+    assert 'id="search-dialog"' in html
+    assert 'id="current-section"' in html
+    assert 'id="reading-progress"' in html
+    assert 'id="mobile-prev"' in html
+    assert 'id="mobile-catalog"' in html
+    assert 'id="mobile-next"' in html
+    assert 'data-report-date="2026-09-03"' in html
+    assert "event.metaKey || event.ctrlKey" in html
+    assert "event.key === 'Escape'" in html
+    assert "localStorage" in html
+    assert "data-label" in html
