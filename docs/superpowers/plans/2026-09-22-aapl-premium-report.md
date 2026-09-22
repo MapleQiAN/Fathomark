@@ -147,7 +147,7 @@ Use `pypdf` to assert:
 
 - every page has extractable text except an intentional image-dominant page;
 - all 20 numbered section headings and the final sentence are extractable;
-- all 12 source tables remain extractable by checking their identifying cell text: `公司`, `2025财年`, `2026财年上半年`, `2026财年上半年收入`, `当前TTM市盈率`, `WACC / 永续增长`, `2031年EPS`, `价格区间`, `累计研究仓位`, `原始分`, `否决项`, and `监控项目`;
+- all 12 source tables remain extractable in source order by checking one identifying cell per table: `公司`, `2025财年`, `2026财年上半年`, `2026财年上半年收入`, `标准化FCFF收益率`, `WACC / 永续增长`, `2031年EPS`, `价格区间`, `累计研究仓位`, `原始分`, `否决项`, and `监控项目`;
 - `79.60`, `B+`, `333.74`, `4.9%`, and key thresholds survive;
 - interactive control labels and temporary simulated values do not appear.
 - the three custom PDF metadata hashes exactly match the source files.
