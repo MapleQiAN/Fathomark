@@ -56,6 +56,12 @@ class FathomarkClient:
                 detail = resp.text
             raise FathomarkAPIError(resp.status_code, str(detail))
 
+    def health(self) -> dict:
+        """Read the unauthenticated process health endpoint."""
+        resp = self._http.get(f"{self._base_url}/health")
+        self._raise_for_error(resp)
+        return resp.json()
+
     def create_run(self, payload: dict, idem_key: str) -> dict:
         """Create a research run (idempotent per ``idem_key``)."""
         return self._request(
@@ -64,6 +70,10 @@ class FathomarkClient:
 
     def get_run(self, run_id: str) -> dict:
         return self._request("GET", f"/research-runs/{run_id}")
+
+    def execute(self, run_id: str) -> dict:
+        """Run the configured orchestrator for a research run."""
+        return self._request("POST", f"/research-runs/{run_id}/execute")
 
     def ingest_evidence(self, run_id: str, evidence: list[dict]) -> dict:
         return self._request(
