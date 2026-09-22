@@ -14,7 +14,11 @@ production deployment.
 - [x] CI exports the locked SBOM and runs `pip-audit`.
 - [ ] Review live-provider terms, user-agent/rate-limit settings and secrets in
       the deployment environment.
-- [ ] Run Chromium PDF pagination/font/overflow checks in the target image.
+- [x] Run `scripts/verify_pdf.py` with the target Chromium image and record the
+      generated page count, loaded font, overflow result and expected-text
+      checks in the release evidence (`fathomark:m2-m4-check`: 2 pages,
+      `Noto Sans CJK SC`, desktop/narrow overflow clear, ADBE title and draft
+      marker present).
 - [ ] Create a signed Git tag and publish release notes after maintainer
       approval.
 

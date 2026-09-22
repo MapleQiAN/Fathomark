@@ -25,7 +25,7 @@
 <br />
 
 > [!IMPORTANT]
-> M1–M3 are implemented, M4 has the shared report model/renderers and artifact manifests, and M5 now provides a zero-config Docker/SQLite demo with an opt-in recorded ADBE path from creation through approval. The deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework; `packages/storage` + `packages/api` add the run state machine, headless API, Python SDK, OpenAPI contract and HMAC webhooks — see [TODO.md](TODO.md) for live-provider, PDF and review-console boundaries.
+> M1–M5 core slices are implemented: M4 provides one validated report model, deterministic JSON/Markdown/HTML/PDF export boundaries, artifact manifests and offline accessibility/responsive contracts; M5 provides a zero-config Docker/SQLite demo, an opt-in recorded ADBE path from creation through approval, the optional `fathomark` CLI and plugin contract scaffolding. The deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework; `packages/storage` + `packages/api` add the run state machine, headless API, Python SDK, OpenAPI contract and HMAC webhooks — see [TODO.md](TODO.md) for live-provider, target-browser and review-console boundaries.
 
 ## The idea in one sentence
 
@@ -55,7 +55,7 @@ That boundary is the heart of 渊衡. Agents can read, compare, explain and chal
 1. **Set the frame.** Each run fixes one ordinary listed operating company, a cutoff date and the versioned [`common-stock@1.0.0`](frameworks/common-stock.yaml) framework.
 2. **Ground every factor.** Dated, source-linked evidence and counter-evidence support one 0–10 proposal for each of 11 factors. A gap is declared; prose does not smooth it away.
 3. **Calculate, then constrain.** `core`, `offensive` and `tactical` lenses reweight the same structured proposals for different research questions. Deterministic code turns the selected lens into a 100-point total and grade; a triggered Veto yields `X`, while insufficient confidence yields `NR` instead of a total.
-4. **Review before release — implemented API gate.** M2 implements the `draft` → `needs_review` → `approved` transitions and records the reviewer decision. M3 now runs the scope agent and six specialist agents offline, covering all 11 factors through deterministic cassette replay. Background workers and report rendering/publishing remain planned, so this fixture is a checked core snapshot, not an official report.
+4. **Review before release — implemented API gate.** M2 implements the `draft` → `needs_review` → `approved` transitions and records the reviewer decision. M3 now runs the scope agent and six specialist agents offline, covering all 11 factors through deterministic cassette replay. M4 renders the approved `ReportModel` into one manifest-bound report bundle; the recorded fixture is still a checked offline example, not a current rating or investment instruction.
 
 ### The 11 factors and their weights
 
@@ -218,6 +218,7 @@ fathomark/
 │   ├── agents/        # specialist contracts and orchestration
 │   ├── providers/     # filings, IR and market-data adapters
 │   ├── reports/       # JSON, HTML, Markdown and PDF renderers
+│   ├── cli/           # optional API CLI and plugin contract scaffolding
 │   └── api/           # REST service and background worker entry points
 ├── frameworks/        # versioned scoring definitions
 ├── docs/              # design notes and integration guidance
@@ -229,8 +230,9 @@ fathomark/
 
 1. [System design](docs/design/2026-09-18-fathomark-design.md) — architecture, data contracts, scoring governance and report formats.
 2. [Roadmap](TODO.md) — milestones, acceptance criteria and the remaining project work.
+3. [CLI guide](docs/cli.md) and [plugin development](docs/plugin-development.md) — optional client and extension boundaries.
 
-M2 is done: `packages/storage` and `packages/api` implement the run state machine, SQLite/PostgreSQL storage, the headless API (create, query, cancel, retry, review, approve, result), the Python SDK in `packages/sdk`, the versioned OpenAPI contract and HMAC webhooks. M3 adds provider protocols with fake/replay/recording test doubles, hosted-LLM adapters, SEC/IR/market data adapters, a scope agent, six specialist agents with a repair loop, cutoff/freshness-aware evidence normalization, auditable LLM budgets, automatic evidence-gap routing, and a step-recorded Red-Team audit that persists typed issues and blocks drafts when an issue is blocking. The asynchronous worker, operator verification of live-source availability/licensing, and report renderers are still ahead — see [TODO.md](TODO.md).
+M2 is done: `packages/storage` and `packages/api` implement the run state machine, SQLite/PostgreSQL storage, the headless API (create, query, cancel, retry, review, approve, result), the Python SDK in `packages/sdk`, the versioned OpenAPI contract and HMAC webhooks. M3 adds provider protocols with fake/replay/recording test doubles, hosted-LLM adapters, SEC/IR/market data adapters, a scope agent, six specialist agents with a repair loop, cutoff/freshness-aware evidence normalization, auditable LLM budgets, automatic evidence-gap routing, and a step-recorded Red-Team audit that persists typed issues and blocks drafts when an issue is blocking. M4 adds deterministic report bundle/manifest contracts; M5 adds the local demo, CLI and release foundations. The asynchronous worker, operator verification of live-source availability/licensing, target-image browser checks and review console remain explicit boundaries — see [TODO.md](TODO.md).
 
 ## Get the repository
 
@@ -256,8 +258,8 @@ cd Fathomark
 | Deterministic scoring core | ✅ Implemented (M1) |
 | Agent adapters and provider recordings | Protocols + scope and all six specialist agents ✅ (M3, offline replay) |
 | API and worker | API ✅ Implemented (M2); orchestrator ✅ (M3 slice); background worker ◻ Planned |
-| HTML / Markdown / PDF renderer | ◻ Planned |
-| Self-contained demo and release packaging | ✅ Local Docker/SQLite + recorded golden path; release hardening in progress |
+| HTML / Markdown / PDF renderer | ✅ Implemented from one `ReportModel`; browser/font deployment checks remain |
+| Self-contained demo and release packaging | ✅ Local Docker/SQLite + recorded golden path + CLI; maintainer release gates remain |
 
 M1 scoring core 已实现：`packages/core` 承载 `common-stock@1.0.0` 框架的确定性评分、Veto 与评级映射。
 离线可复现：`examples/fixtures/adbe_2026-09-03` 金样测试证明同一 JSON 输入永远得到同一快照（ADBE 核心 85.75 / A+）。

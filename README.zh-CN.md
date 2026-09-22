@@ -25,7 +25,7 @@
 <br />
 
 > [!IMPORTANT]
-> M1–M3 已实现，M4 已提供共享报告模型/渲染器与制品 manifest，M5 现已提供无需外置数据库的 Docker/SQLite Demo，以及从创建到核准的可选离线 ADBE 录制路径。`packages/core` 中的确定性评分核心实现了 `common-stock@1.0.0` 框架；`packages/storage` 与 `packages/api` 提供运行状态机、无界面 API、Python SDK、OpenAPI 契约与 HMAC Webhook——实时 Provider、PDF 和审阅台边界见 [TODO.md](TODO.md)。
+> M1–M5 的核心切片已实现：M4 提供统一且经过校验的报告模型、确定性的 JSON/Markdown/HTML/PDF 导出边界、制品 manifest，以及离线可访问性/响应式契约；M5 提供无需外置数据库的 Docker/SQLite Demo、从创建到核准的可选离线 ADBE 录制路径、可选 `fathomark` CLI 与插件契约脚手架。`packages/core` 中的确定性评分核心实现了 `common-stock@1.0.0` 框架；`packages/storage` 与 `packages/api` 提供运行状态机、无界面 API、Python SDK、OpenAPI 契约与 HMAC Webhook——实时 Provider、目标浏览器和审阅台边界见 [TODO.md](TODO.md)。
 
 ## 一句话说明
 
@@ -55,7 +55,7 @@
 1. **确定边界。** 每次运行固定一只普通上市经营公司、一个截止日期，以及版本化的 [`common-stock@1.0.0`](frameworks/common-stock.yaml) 框架。
 2. **让每个因子落在证据上。** 带日期、可回溯来源的证据和反证，共同支撑 11 个因子中每一个 0–10 的提议分数。缺口会被声明，不能靠文字抹平。
 3. **先计算，再加约束。** `core`、`offensive` 与 `tactical` 研究视角使用同一组结构化提议，但针对不同研究问题重新加权。确定性代码将选定视角合成为 100 分总分和等级；触发 Veto 时结果为 `X`，置信度不足时为 `NR`，而非给出总分。
-4. **发布前审阅——已实现的 API 关口。** M2 已实现 `draft` → `needs_review` → `approved` 状态流转，并记录审阅者决策。M3 现已能离线运行 Scope 智能体与 6 个专业智能体，通过确定性 cassette 回放覆盖全部 11 个因子。后台 worker 与报告渲染/发布仍在后续计划中，因此该夹具是经过检查的核心快照，而非正式报告。
+4. **发布前审阅——已实现的 API 关口。** M2 已实现 `draft` → `needs_review` → `approved` 状态流转，并记录审阅者决策。M3 现已能离线运行 Scope 智能体与 6 个专业智能体，通过确定性 cassette 回放覆盖全部 11 个因子。M4 从同一个 `ReportModel` 生成由 manifest 绑定的报告包；该录制夹具仍只是经过检查的离线示例，不是当前评级或投资指令。
 
 ### 11 个因子与它们的权重
 
@@ -218,6 +218,7 @@ fathomark/
 │   ├── agents/        # 专家智能体契约和编排
 │   ├── providers/     # 文件、IR 与市场数据适配器
 │   ├── reports/       # JSON、HTML、Markdown 与 PDF 渲染器
+│   ├── cli/           # 可选 API CLI 与插件契约脚手架
 │   └── api/           # REST 服务与后台工作器入口
 ├── frameworks/        # 版本化评分定义
 ├── docs/              # 设计说明与集成指南
@@ -229,8 +230,9 @@ fathomark/
 
 1. [系统设计](docs/design/2026-09-18-fathomark-design.md)——架构、数据契约、评分治理和报告格式。
 2. [路线图](TODO.md)——里程碑、验收标准和项目剩余工作。
+3. [CLI 指南](docs/cli.md) 与 [插件开发](docs/plugin-development.md)——可选客户端和扩展边界。
 
-M2 已完成：`packages/storage` 与 `packages/api` 实现了运行状态机、SQLite/PostgreSQL 存储、无界面 API（创建、查询、取消、重试、审阅、批准、结果）、`packages/sdk` 中的 Python SDK、版本化 OpenAPI 契约与 HMAC Webhook。M3 新增 Provider 协议及 Fake/Replay/Recording 测试替身、托管 LLM 适配器、SEC/IR/行情数据适配器、Scope 智能体、带修复重试的 6 个专业智能体、按截止日/新鲜度过滤的证据标准化、可审计的 LLM 用量预算、证据缺口自动路由，以及记录步骤的 Red-Team 审计：结构化异议会持久化，阻塞异议会阻止草稿生成。异步 worker、实时来源可用性与授权仍需部署方验证、报告渲染器仍在后续计划中——参见 [TODO.md](TODO.md)。
+M2 已完成：`packages/storage` 与 `packages/api` 实现了运行状态机、SQLite/PostgreSQL 存储、无界面 API（创建、查询、取消、重试、审阅、批准、结果）、`packages/sdk` 中的 Python SDK、版本化 OpenAPI 契约与 HMAC Webhook。M3 新增 Provider 协议及 Fake/Replay/Recording 测试替身、托管 LLM 适配器、SEC/IR/行情数据适配器、Scope 智能体、带修复重试的 6 个专业智能体、按截止日/新鲜度过滤的证据标准化、可审计的 LLM 用量预算、证据缺口自动路由，以及记录步骤的 Red-Team 审计：结构化异议会持久化，阻塞异议会阻止草稿生成。M4 新增确定性的报告 bundle/manifest 契约；M5 新增本地 Demo、CLI 与发布基础设施。异步 worker、实时来源可用性与授权、目标镜像浏览器检查和审阅台仍是明确边界——参见 [TODO.md](TODO.md)。
 
 ## 获取仓库
 
@@ -256,8 +258,8 @@ cd Fathomark
 | 确定性评分核心 | ✅ 已实现（M1） |
 | 智能体适配器与供应商记录 | 协议 + Scope 与全部 6 个专业智能体 ✅（M3，离线回放） |
 | API 与工作器 | API ✅ 已实现（M2）；编排器 ✅（M3 切片）；后台 worker ◻ 计划中 |
-| HTML / Markdown / PDF 渲染器 | ◻ 计划中 |
-| 自包含 Demo 与发布打包 | ✅ 本地 Docker/SQLite + 录制黄金路径；发布加固进行中 |
+| HTML / Markdown / PDF 渲染器 | ✅ 从同一个 `ReportModel` 实现；浏览器/字体部署检查仍需执行 |
+| 自包含 Demo 与发布打包 | ✅ 本地 Docker/SQLite + 录制黄金路径 + CLI；维护者发布关口仍保留 |
 
 M1 评分核心已实现：`packages/core` 承载 `common-stock@1.0.0` 框架的确定性评分、Veto 与评级映射。
 离线可复现：`examples/fixtures/adbe_2026-09-03` 金样测试证明同一 JSON 输入永远得到同一快照（ADBE 核心 85.75 / A+）。

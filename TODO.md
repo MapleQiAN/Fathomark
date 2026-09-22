@@ -49,8 +49,8 @@
 ### M2 完成标准
 
 - [x] 使用固定 fixture 可以从 API 创建任务、审核并批准不可变版本。(packages/api/tests/test_e2e_adbe.py)
-- [x] Worker 中断后只恢复未完成步骤。(M3 切片：execute 重入 + step_runs 输入哈希实现步骤级恢复；异步 worker 进程仍在后续)
-  - [ ] 异步 worker 需要步骤边界逐条提交（当前 execute 整体一次提交）。
+- [x] Worker 中断后只恢复未完成步骤。(execute 重入 + step_runs 输入哈希实现步骤级恢复；异步 worker 调度进程仍由部署方接入)
+  - [x] 异步 worker 需要步骤边界逐条提交。(begin/finish/fail 均在步骤边界提交；跨会话恢复契约测试覆盖)
 - [x] 重复请求不会产生重复正式版本。(幂等键测试)
 
 ## 3. M3：美股 Provider 与专业 Agent
@@ -93,23 +93,23 @@
 - [x] 定义统一 `ReportModel`。(由同一模型驱动 JSON、Markdown 与 HTML)
 - [x] 实现机器 JSON 报告。
 - [x] 实现 GFM Markdown 渲染器和 YAML metadata。
-- [x] 实现专业 HTML 模板、证据脚注和离线单文件导出。(基础自包含模板；图表与主题已补，PDF/字体仍待补)
+- [x] 实现专业 HTML 模板、证据脚注和离线单文件导出。(基础自包含模板；图表、主题、PDF 与固定字体已补)
 - [x] 实现因子图、估值敏感性矩阵和评分变化 SVG。(packages/reporting/charts.py)
 - [x] 实现浅色、深色与打印主题。(render_html(theme=...) + SVG theme)
-- [x] 实现 Playwright/Chromium PDF 导出。(render_pdf：print HTML + lazy Playwright；CI 注入 launcher，真实 Chromium 由部署安装)
-- [ ] 在 Docker 镜像中固定中文字体版本。
+- [x] 实现 Playwright/Chromium PDF 导出。(render_pdf：print HTML + lazy Playwright；CI 注入 launcher，目标部署按 optional `pdf` 安装)
+- [x] 在 Docker 镜像中固定中文字体版本。(Noto CJK `1:20220127+repack1-1`；目标镜像已执行实际字体渲染检查)
 - [x] 实现制品 manifest 与内容哈希。(reporting 确定性 builder + artifacts 表/API 持久化与下载)
 - [x] 增加 Markdown lint、黄金快照和格式交叉核对测试。(reporting 合约 lint + JSON/Markdown/HTML golden hashes)
-- [ ] 增加 HTML 可访问性、响应式和视觉测试。
-- [ ] 增加 PDF 分页、空白页、字体和溢出测试。
-- [ ] 决定是否在 v1 同期交付 Vue 审核台。
-- [ ] 若交付 Web，仅实现任务列表、新建任务、审核工作台和报告预览。
+- [x] 增加 HTML 可访问性、响应式和视觉契约测试。(离线结构/CSS/SVG 契约；真实浏览器视觉回归仍是部署级检查)
+- [x] 增加 PDF 分页、空白页、字体和溢出测试。(verify_pdf.py：目标 Chromium + Noto CJK；pypdf 结构检查)
+- [x] 决定是否在 v1 同期交付 Vue 审核台。(不交付；v1 保持 Headless API + CLI，避免把客户端 UI 变成后端 Demo 依赖)
+- [ ] 若交付 Web，仅实现任务列表、新建任务、审核工作台和报告预览。(不适用；待 v1 之后单独立项)
 
 ### M4 完成标准
 
-- [ ] 同一批准版本的 JSON、HTML、Markdown 和 PDF 数字与证据一致。
-- [ ] 草稿与正式报告在所有格式中都能明确区分。
-- [ ] PDF 无字体缺失、内容裁断和异常空白页。
+- [x] 同一批准版本的 JSON、HTML、Markdown 和 PDF 数字与证据一致。(统一 `render_report_bundle` + manifest/跨格式契约测试；目标 Chromium 已验证 PDF 文本与字体资源)
+- [x] 草稿与正式报告在所有格式中都能明确区分。(JSON 状态、Markdown/HTML 标识、PDF 来自 print HTML)
+- [x] PDF 无字体缺失、内容裁断和异常空白页。(浏览器双视口字体/溢出检查 + PDF 页文本/字体资源检查；已在固定 Noto CJK 的 Docker 目标镜像执行)
 
 ## 5. M5：自包含 Demo 与开源发布
 
@@ -118,14 +118,14 @@
 - [x] 提供 PostgreSQL 作为可选的服务化部署示例。(docker-compose.postgres.yml；默认 Compose 仍使用 SQLite)
 - [x] 编写五分钟快速开始。(docs/quickstart.md)
 - [x] 编写 API、Python SDK 文档。(docs/api-and-sdk.md)
-- [ ] 编写 CLI 文档。(CLI 仍为可选客户端，当前未实现)
+- [x] 编写 CLI 文档。(可选 `fathomark` API 客户端；见 `docs/cli.md`)
 - [x] 编写 LLM Provider 和 Data Provider 开发指南。(MODEL_PROVIDERS.md、DATA_PROVIDERS.md)
 - [x] 编写 ReportTheme 开发指南。(docs/reporting-development.md)
 - [x] 编写评分框架开发和校验指南。(docs/framework-development.md)
 - [x] 编写数据来源、许可、缓存与再分发政策。(DATA_PROVIDERS.md)
 - [x] 编写提示注入、SSRF、密钥与恶意文档安全指南。(SECURITY.md)
 - [x] 提供不依赖付费数据的最小公开 fixture。(examples/fixtures/adbe_2026-09-03：SEC 公开来源元数据 + 录制响应，CI 离线回放)
-- [ ] 提供插件认证命令与契约测试模板。
+- [x] 提供插件认证命令与契约测试模板。(环境变量状态检查不打印密钥；见 `docs/plugin-development.md`)
 - [x] 生成 SBOM 并加入依赖漏洞扫描。(CI 导出 CycloneDX 1.5 并上传构建产物)
 - [x] 完成第一个公开版本的变更日志和发布检查。(CHANGELOG.md + docs/release-checklist.md；签名 tag/真实部署仍需维护者执行)
 - [x] 发布打包前将 httpx 提升为 fathomark-api 运行时依赖（webhook 发送器需要）。

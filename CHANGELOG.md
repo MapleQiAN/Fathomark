@@ -15,9 +15,11 @@ capabilities rather than live-provider or production-deployment guarantees.
 - SEC EDGAR/XBRL, company IR, replaceable market-data and hosted LLM provider
   contracts with offline cassettes and explicit safety boundaries;
 - deterministic JSON, Markdown, HTML, SVG and optional Playwright/Chromium PDF
-  report outputs plus content-addressed manifests;
-- Docker/SQLite quickstart, optional PostgreSQL Compose, CI migration checks,
-  CycloneDX SBOM and `pip-audit` scanning.
+  report outputs plus content-addressed manifests and a four-format bundle
+  contract;
+- Docker/SQLite quickstart with a pinned Noto CJK font, optional PostgreSQL
+  Compose, the `fathomark` CLI, plugin auth/template scaffolding, CI migration
+  checks, CycloneDX SBOM and `pip-audit` scanning.
 
 ### Known boundaries
 
@@ -25,5 +27,5 @@ capabilities rather than live-provider or production-deployment guarantees.
   operator-configured;
 - PDF pagination, Chinese font packaging and visual browser checks require a
   deployment with Chromium and the selected fonts;
-- CLI, plugin authentication/templates and the Vue review console remain
-  optional follow-up clients, not core v1 requirements.
+- The CLI and plugin scaffolding are optional clients; the Vue review console
+  remains intentionally outside the core v1 delivery.
