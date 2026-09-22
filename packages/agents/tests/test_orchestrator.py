@@ -3,10 +3,11 @@ from datetime import date
 from pathlib import Path
 from time import sleep
 
+import fathomark_agents.orchestrator as orchestrator_module
 import pytest
 from fathomark_agents import LLMBudget, Orchestrator, OrchestratorError
 from fathomark_agents.financial_agent import FinancialAgent
-from fathomark_agents.orchestrator import _BudgetedLLM, build_default_steps
+from fathomark_agents.orchestrator import StepSpec, _BudgetedLLM, build_default_steps
 from fathomark_agents.specialist_agent import build_prompt
 from fathomark_agents.specialists import (
     BusinessAgent,
@@ -32,6 +33,8 @@ from fathomark_providers import (
     ReplayLLMProvider,
     prompt_key,
 )
+from fathomark_storage.database import create_session_factory
+from fathomark_storage.repository import RunRepository
 from fathomark_storage.state_machine import RunState
 
 ROOT = Path(__file__).parents[3]
@@ -158,6 +161,50 @@ def test_full_run_reaches_draft_matching_golden(seeded_run):
     }
     assert all(s.status == "succeeded" for s in steps.values())
     assert steps["financial"].output_json["llm_usage"]["calls"] >= 1
+
+
+def test_worker_commits_each_step_boundary_for_cross_session_resume(
+    seeded_run, monkeypatch
+):
+    repo, run_id = seeded_run
+    observed = {}
+    database_url = str(repo.session.get_bind().url)
+
+    def observe(key, step_name):
+        factory = create_session_factory(database_url)
+        other = RunRepository(factory())
+        observed[key] = other.step_record(run_id, step_name).status
+        other.session.close()
+
+    def scope_step():
+        observe("scope_start", "scope")
+        return {"scope": "committed-before-work"}
+
+    def collect_step():
+        observe("collect_sees_scope", "scope")
+        return {"collect": "previous-step-committed"}
+
+    def steps(_orch, _run_id):
+        return [
+            StepSpec("scope", (), RunState.CREATED, None, scope_step),
+            # Same-level steps are deliberately independent: the second step
+            # must see the first step's succeeded record in another session.
+            StepSpec("collect", (), RunState.CREATED, None, collect_step),
+        ]
+
+    monkeypatch.setattr(orchestrator_module, "build_default_steps", steps)
+
+    state = _orchestrator(
+        repo, ReplayLLMProvider(FIXTURE / "llm_cassette.json")
+    ).execute(run_id)
+
+    assert state == RunState.CREATED
+    assert observed == {
+        "scope_start": "running",
+        "collect_sees_scope": "succeeded",
+    }
+    assert repo.step_record(run_id, "scope").status == "succeeded"
+    assert repo.step_record(run_id, "collect").status == "succeeded"
 
 
 def test_insufficient_agent_confidence_produces_nr_snapshot(seeded_run):

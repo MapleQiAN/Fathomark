@@ -287,6 +287,10 @@ class Orchestrator:
             provider_name=provider_name,
             provider_version=provider_version,
         )
+        # Persist the running marker before invoking user/provider code. A
+        # worker crash can therefore be resumed from an explicit step record
+        # instead of silently losing the in-flight boundary.
+        self.repo.session.commit()
         try:
             result = step.run()
             if isinstance(result, StepResult):
@@ -301,21 +305,30 @@ class Orchestrator:
             self.repo.fail_step(run_id, step.name, str(exc))
             self.repo.get(run_id).error = str(exc)
             self.repo.advance(run_id, RunState.NEEDS_REVIEW)
+            self.repo.session.commit()
             return RunState.NEEDS_REVIEW
         except ReviewRequiredError as exc:
             self.repo.fail_step(run_id, step.name, str(exc))
             self.repo.get(run_id).error = str(exc)
             self._ensure_state(run_id, RunState.NEEDS_REVIEW)
+            self.repo.session.commit()
             return RunState.NEEDS_REVIEW
         except ProviderError as exc:
             self.repo.fail_step(run_id, step.name, str(exc))
-            return self._fail_run(run_id, str(exc))
+            final = self._fail_run(run_id, str(exc))
+            self.repo.session.commit()
+            return final
         except Exception as exc:  # noqa: BLE001 — deliberate catch-all boundary:
             # any unexpected step failure must fail the run explicitly (§14),
             # never propagate silently past execute().
             self.repo.fail_step(run_id, step.name, str(exc))
-            return self._fail_run(run_id, f"{type(exc).__name__}: {exc}")
+            final = self._fail_run(run_id, f"{type(exc).__name__}: {exc}")
+            self.repo.session.commit()
+            return final
         self.repo.finish_step(run_id, step.name, output)
+        # Commit the complete step atomically with its output and state
+        # transition before the next step is considered runnable.
+        self.repo.session.commit()
         if isinstance(result, StepResult) and result.final_state is not None:
             return result.final_state
         return None
