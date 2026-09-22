@@ -74,22 +74,9 @@ The live adapters are replaceable deployment components. Repository tests use re
 
 ## From question to approved artifact
 
-```mermaid
-flowchart LR
-    Q[Research contract] --> P[Evidence providers]
-    P --> N[Normalize and filter]
-    N --> A[Scope + 6 specialists]
-    A --> R[Red-Team audit]
-    R --> G{Blocking issue?}
-    G -->|yes| NR[Needs review]
-    NR -->|resolve and rerun| A
-    G -->|no| S[Deterministic score]
-    S --> D[Draft snapshot]
-    D --> H{Human approval}
-    H -->|approve| V[Immutable version]
-    V --> RM[ReportModel]
-    RM --> O[JSON · Markdown · HTML · PDF]
-```
+<p align="center">
+  <img src="docs/assets/research-workflow.png" alt="Fathomark workflow from research contract through evidence collection, specialist analysis, Red-Team review, deterministic scoring, human approval and JSON, Markdown, HTML and PDF artifacts." width="100%" />
+</p>
 
 Provider failures, stale evidence, missing references and unresolved objections become stored state. Each orchestrator step commits its boundary before the next step runs, which makes interrupted executions auditable and resumable.
 

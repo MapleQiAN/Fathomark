@@ -74,22 +74,9 @@ curl http://localhost:8000/health
 
 ## 从问题到核准制品
 
-```mermaid
-flowchart LR
-    Q[研究契约] --> P[证据 Provider]
-    P --> N[标准化与过滤]
-    N --> A[Scope + 6 个专业智能体]
-    A --> R[Red-Team 审计]
-    R --> G{存在阻断问题？}
-    G -->|是| NR[需要审阅]
-    NR -->|解决后重新执行| A
-    G -->|否| S[确定性评分]
-    S --> D[草稿快照]
-    D --> H{人工核准}
-    H -->|核准| V[不可变版本]
-    V --> RM[ReportModel]
-    RM --> O[JSON · Markdown · HTML · PDF]
-```
+<p align="center">
+  <img src="docs/assets/research-workflow.png" alt="Fathomark 从研究契约开始，经过证据采集、专业智能体分析、Red-Team 审计、确定性评分与人工核准，最终生成 JSON、Markdown、HTML 和 PDF 制品的完整流程。" width="100%" />
+</p>
 
 Provider 失败、证据过期、引用缺失和未解决异议都会成为持久化状态。编排器会在进入下一步之前提交当前步骤边界，使中断后的执行仍然可审计、可恢复。
 
