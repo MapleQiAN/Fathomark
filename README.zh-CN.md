@@ -7,7 +7,7 @@
 <p align="center"><a href="README.md">English</a></p>
 
 <p align="center">
-  <strong>深研有据，权衡有度。</strong><br />
+  <strong>璇玑观象，研几审势。</strong><br />
   可审计的多智能体股票研究：确定性评分，人工核准。
 </p>
 

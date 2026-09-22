@@ -7,7 +7,7 @@
 <p align="center"><a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
-  <strong>深研有据，权衡有度。</strong><br />
+  <strong>璇玑观象，研几审势。</strong><br />
   Auditable multi-agent equity research with deterministic scoring and human approval.
 </p>
 
