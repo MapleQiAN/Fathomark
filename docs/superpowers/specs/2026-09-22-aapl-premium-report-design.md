@@ -107,6 +107,19 @@ It calculates scenario terminal value, total return, annualized return, and prob
 - experimental results carry an explicit `模拟实验，不属于正式报告结论` label;
 - experimental values never rewrite the report body, score, rating, or PDF.
 
+Use these formulas for the five year laboratory:
+
+```text
+terminal value = 2031 EPS × terminal P/E + cumulative dividend
+total return = terminal value ÷ current price - 1
+annualized return = (terminal value ÷ current price)^(1/5) - 1
+probability weighted terminal value = Σ(probability × scenario terminal value)
+probability weighted annualized return =
+  (probability weighted terminal value ÷ current price)^(1/5) - 1
+```
+
+Show currency to two decimals in editable/result detail and percentages to one decimal in summary views. Preserve the source report exactly where its table shows a `+5.1%` base annualized return while the supplied image labels the same scenario `5.0%`; the artifact must not silently normalize that source discrepancy. The simulator's formula result rounds to one decimal independently.
+
 ## PDF Experience
 
 The PDF is rendered from the same complete HTML document under a dedicated print stylesheet. It includes:
@@ -122,6 +135,8 @@ The PDF is rendered from the same complete HTML document under a dedicated print
 - static source scenario values only.
 
 Interactive controls, search UI, sticky navigation, dark theme controls, and the editable laboratory are omitted from print. A short appendix may explain that an interactive laboratory exists in the HTML, without printing temporary simulated values.
+
+Print preparation must force every report section open before pagination, regardless of its interactive collapsed state, so the PDF cannot omit hidden source text.
 
 ## Integrity and Safety
 
