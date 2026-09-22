@@ -28,7 +28,7 @@
 
 - [ ] **Step 1: Record the source contract**
 
-In the builder, compute SHA-256 hashes and record exact source counts: 58 headings, 12 Markdown tables, 2 images, and the distinctive final sentence.
+Record the initial `git status --short` output as the repository baseline; the existing `.superpowers/` visual-companion directory is untracked before artifact work. In the builder, compute SHA-256 hashes and record exact source counts: 58 headings, 12 Markdown tables, 2 images, and the distinctive final sentence.
 
 - [ ] **Step 2: Add a deliberate failing preflight**
 
@@ -66,15 +66,18 @@ Create a self contained document with:
 
 - warm off white, graphite, and teal design tokens;
 - asymmetric cover/hero with frozen AAPL metadata and `79.60 / B+`;
+- explicit overview facts for the current role cap `3%`, exploratory target `1%–2%`, and conclusion `核心仓级资产，候选仓级价格`;
+- source scenario and factor summaries alongside their enhanced charts;
 - desktop sticky navigation and mobile chapter selector;
 - reading progress bar;
 - complete Pandoc article body;
 - enhanced factor bars, scenario chart, and valuation sensitivity matrix;
 - source-integrity footer with the three SHA-256 hashes.
+- HTML `<meta>` fields named `fathomark-source-markdown-sha256`, `fathomark-source-scenario-image-sha256`, and `fathomark-source-factor-image-sha256`.
 
 - [ ] **Step 3: Implement reader interactions**
 
-Use vanilla JavaScript for full text search/highlighting, next/previous result navigation, chapter collapse/expand, light/dark theme, reading progress, active TOC state, mobile navigation, and print.
+Use vanilla JavaScript for full text search/highlighting, next/previous result navigation, chapter collapse/expand, light/dark theme, reading progress, active TOC state, mobile navigation, and print. Add separate toolbar actions for browser printing and downloading/opening the sibling `AAPL_长期核心仓研究.pdf` artifact.
 
 - [ ] **Step 4: Preserve accessibility and motion preferences**
 
@@ -88,6 +91,7 @@ Run the builder and assert:
 - all 20 numbered top-level sections exist;
 - all 12 source tables and both source images remain present;
 - the HTML includes source report and experimental-lab labels.
+- all three source-hash metadata fields exactly match the source files.
 
 Expected: PASS.
 
@@ -135,7 +139,7 @@ Add a cover, table of contents, repeated table headers, page-break rules for hea
 
 - [ ] **Step 3: Render through Playwright**
 
-Use A4, background graphics, browser header/footer templates, page numbers, and margins suitable for running text.
+Use A4, background graphics, browser header/footer templates, page numbers, and margins suitable for running text. After Chromium rendering, use `pypdf` to add custom metadata fields `/FathomarkSourceMarkdownSHA256`, `/FathomarkSourceScenarioImageSHA256`, and `/FathomarkSourceFactorImageSHA256` without changing page content.
 
 - [ ] **Step 4: Verify PDF structure**
 
@@ -143,8 +147,10 @@ Use `pypdf` to assert:
 
 - every page has extractable text except an intentional image-dominant page;
 - all 20 numbered section headings and the final sentence are extractable;
+- all 12 source tables remain extractable by checking their identifying cell text: `公司`, `2025财年`, `2026财年上半年`, `2026财年上半年收入`, `当前TTM市盈率`, `WACC / 永续增长`, `2031年EPS`, `价格区间`, `累计研究仓位`, `原始分`, `否决项`, and `监控项目`;
 - `79.60`, `B+`, `333.74`, `4.9%`, and key thresholds survive;
 - interactive control labels and temporary simulated values do not appear.
+- the three custom PDF metadata hashes exactly match the source files.
 
 Expected: PASS.
 
@@ -159,6 +165,8 @@ Expected: PASS.
 - [ ] **Step 1: Capture desktop and mobile HTML**
 
 Use Playwright at 1440×1000 and 390×844. Assert document-level scroll width does not exceed viewport width.
+
+Register a request listener before loading the document and fail if the page requests any `http:` or `https:` resource. `data:`, `blob:`, `about:`, and the local document URL are allowed.
 
 - [ ] **Step 2: Render every PDF page**
 
@@ -184,15 +192,17 @@ Expected: all checks pass with no unresolved content omission or layout defect.
 - Verify: `dist/aapl-premium-report-2026-07-18/AAPL_长期核心仓研究.html`
 - Verify: `dist/aapl-premium-report-2026-07-18/AAPL_长期核心仓研究.pdf`
 
-- [ ] **Step 1: Re-run the builder and validation from a clean artifact directory state**
+- [ ] **Step 1: Re-run the builder and validation from the recorded repository baseline**
 
-Expected: deterministic HTML bytes and a valid PDF. PDF metadata may vary by Chromium and is recorded separately.
+Run: `uv run --extra pdf python dist/aapl-premium-report-2026-07-18/build_report.py`
+
+Expected: deterministic HTML bytes and a valid PDF. PDF creation metadata may vary by Chromium; the custom source-hash metadata must remain exact.
 
 - [ ] **Step 2: Confirm repository scope**
 
 Run: `git status --short`
 
-Expected: only the approved spec/plan commits are tracked; production code is unchanged and the artifact directory remains ignored.
+Expected: output matches the recorded pre-artifact baseline (`?? .superpowers/`); production code is unchanged and the artifact directory remains ignored.
 
 - [ ] **Step 3: Open both deliverables in Codex and report limitations**
 
