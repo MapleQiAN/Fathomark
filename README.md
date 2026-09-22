@@ -8,54 +8,105 @@
 
 <p align="center">
   <strong>深研有据，权衡有度。</strong><br />
-  Evidence-first multi-agent equity research for people who want to see the reasoning.
+  Auditable multi-agent equity research with deterministic scoring and human approval.
 </p>
 
 <p align="center">
-  <a href="docs/design/2026-09-18-fathomark-design.md"><img src="https://img.shields.io/badge/status-design%20ready-102A43?style=for-the-badge&labelColor=0B172A" alt="Status: design ready" /></a>
-  <img src="https://img.shields.io/badge/agents-specialists%20%2B%20red%20team-C9973E?style=for-the-badge&labelColor=0B172A" alt="Specialist agents and red team" />
-  <img src="https://img.shields.io/badge/output-HTML%20%7C%20MD%20%7C%20PDF-2F6F73?style=for-the-badge&labelColor=0B172A" alt="HTML, Markdown and PDF reports" />
+  <a href="TODO.md"><img src="https://img.shields.io/badge/status-M1%E2%80%93M5%20core%20implemented-102A43?style=for-the-badge&labelColor=0B172A" alt="Status: M1 to M5 core implemented" /></a>
+  <a href="https://github.com/MapleQiAN/Fathomark/actions/workflows/ci.yml"><img src="https://github.com/MapleQiAN/Fathomark/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+  <img src="https://img.shields.io/badge/Python-%E2%89%A53.12-C9973E?style=flat-square" alt="Python 3.12 or newer" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-2F6F73?style=flat-square" alt="Apache 2.0 license" /></a>
 </p>
 
 <p align="center">
-  Fathomark turns a stock research question into a traceable chain of evidence,<br />
-  specialist judgments, deterministic scoring, red-team review and a human-approved report.
+  Fathomark turns one stock research question into a traceable chain of evidence,<br />
+  specialist judgments, red-team objections, deterministic scores and an approved version.
 </p>
-
-<br />
 
 > [!IMPORTANT]
-> M1–M5 core slices are implemented: M4 provides one validated report model, deterministic JSON/Markdown/HTML/PDF export boundaries, artifact manifests and offline accessibility/responsive contracts; M5 provides a zero-config Docker/SQLite demo, an opt-in recorded ADBE path from creation through approval, the optional `fathomark` CLI and plugin contract scaffolding. The deterministic scoring core in `packages/core` implements the `common-stock@1.0.0` framework; `packages/storage` + `packages/api` add the run state machine, headless API, Python SDK, OpenAPI contract and HMAC webhooks — see [TODO.md](TODO.md) for live-provider, target-browser and review-console boundaries.
+> Fathomark is pre-1.0. The repository implements the M1–M5 core and validates it with offline fixtures and CI. The default Docker demo replays a recorded ADBE case and makes no live market-data or model calls. An internet-facing deployment still needs authentication, secret management, provider licensing and rate-limit review, monitoring and operator-owned release checks. No signed release tag exists yet.
 
-## The idea in one sentence
+## Run the self-contained demo
+
+The default Compose stack starts the API with SQLite in a named volume. It needs no PostgreSQL service, provider account or LLM key.
+
+```bash
+git clone https://github.com/MapleQiAN/Fathomark.git
+cd Fathomark
+docker compose up --build
+```
+
+In another terminal:
+
+```bash
+curl http://localhost:8000/health
+# {"status":"ok"}
+```
+
+Continue with the [five-minute create → execute → approve walkthrough](docs/quickstart.md), or use the optional [CLI](docs/cli.md). The demo fixture is reproducible research infrastructure; it is not a current rating, forecast, recommendation or trade instruction.
+
+## Why Fathomark
 
 **Let language models investigate the evidence, let deterministic code calculate the score, and let a human decide when a result becomes official.**
 
-That boundary is the heart of 渊衡. Agents can read, compare, explain and challenge. They cannot silently change weights, fill missing data with a story, or publish an unreviewed rating.
-
-## What makes it different
-
 <table>
   <tr>
-    <td width="33%" valign="top"><strong>01 · Evidence ledger</strong><br /><sub>Every factor conclusion points to dated sources, excerpts, provenance and a confidence level.</sub></td>
-    <td width="33%" valign="top"><strong>02 · Deterministic core</strong><br /><sub>The same structured inputs always produce the same score, Veto result, grade and version hash.</sub></td>
-    <td width="33%" valign="top"><strong>03 · Human gate</strong><br /><sub>Draft findings stay drafts until a reviewer approves an immutable release.</sub></td>
+    <td width="33%" valign="top"><strong>01 · Evidence ledger</strong><br /><sub>Each factor conclusion points to dated sources, excerpts, provenance, counter-evidence and confidence.</sub></td>
+    <td width="33%" valign="top"><strong>02 · Deterministic core</strong><br /><sub>The same validated inputs produce the same score, Veto result, grade and content hash.</sub></td>
+    <td width="33%" valign="top"><strong>03 · Human gate</strong><br /><sub>Red-team issues remain visible, and only explicit approval creates an immutable version.</sub></td>
   </tr>
 </table>
+
+Agents can read, compare, explain and challenge. They cannot change framework weights, invent values for missing evidence, bypass a blocking review issue or publish an unapproved rating.
+
+## What works today
+
+| Area | Implemented in this repository |
+| --- | --- |
+| Deterministic scoring | Versioned `common-stock@1.0.0` framework, 11 factors, three lenses, confidence, `NR`, Vetoes, grades, reverse DCF and sensitivity calculations |
+| Storage and API | SQLite by default, optional PostgreSQL, Alembic migrations, run state machine, idempotency, optimistic locks, immutable versions, artifact storage, OpenAPI, SDK and HMAC webhooks |
+| Providers and agents | SEC EDGAR/XBRL, allowlisted company IR and replaceable market-data contracts; OpenAI, Anthropic and OpenAI-compatible LLM adapters; Scope, six specialist and Red-Team agents |
+| Orchestration | Recorded step inputs/outputs, cutoff and freshness filtering, structured-output repair, LLM budgets, explicit failure/review states and step-level resume |
+| Reports | One validated `ReportModel` rendered to JSON, GFM Markdown, self-contained themed HTML and Playwright PDF, with SVG charts, content hashes and artifact manifests |
+| Local demo and release tooling | One-command Docker/SQLite startup, recorded ADBE golden path, optional CLI, plugin contract templates, locked CI, dependency audit and CycloneDX SBOM |
+
+The live adapters are replaceable deployment components. Repository tests use recorded responses and mocked transports, so they establish contract behavior without claiming live-provider availability.
+
+## From question to approved artifact
+
+```mermaid
+flowchart LR
+    Q[Research contract] --> P[Evidence providers]
+    P --> N[Normalize and filter]
+    N --> A[Scope + 6 specialists]
+    A --> R[Red-Team audit]
+    R --> G{Blocking issue?}
+    G -->|yes| NR[Needs review]
+    NR -->|resolve and rerun| A
+    G -->|no| S[Deterministic score]
+    S --> D[Draft snapshot]
+    D --> H{Human approval}
+    H -->|approve| V[Immutable version]
+    V --> RM[ReportModel]
+    RM --> O[JSON · Markdown · HTML · PDF]
+```
+
+Provider failures, stale evidence, missing references and unresolved objections become stored state. Each orchestrator step commits its boundary before the next step runs, which makes interrupted executions auditable and resumable.
 
 ## How a score earns its grade
 
 <p align="center">
-  <img src="docs/assets/scoring-snapshot.svg" alt="Illustrative offline ADBE fixture snapshot: core lens 85.75 out of 100, A plus, high confidence, eleven evidence-backed factors, a clear Veto check and an approval API decision record. Recorded fixture: adbe_2026-09-03." width="100%" />
+  <img src="docs/assets/scoring-snapshot.svg" alt="Offline ADBE fixture snapshot: core lens 85.75 out of 100, A plus, high confidence, eleven evidence-backed factors, a clear Veto check and an approval API record." width="100%" />
 </p>
 
 > [!NOTE]
-> This is the checked, offline [`adbe_2026-09-03`](examples/fixtures/adbe_2026-09-03) reproducibility fixture — not a current rating, forecast, recommendation or trade instruction.
+> The checked [`adbe_2026-09-03`](examples/fixtures/adbe_2026-09-03) fixture is an offline reproducibility case. Its 85.75 / A+ snapshot is historical test data.
 
-1. **Set the frame.** Each run fixes one ordinary listed operating company, a cutoff date and the versioned [`common-stock@1.0.0`](frameworks/common-stock.yaml) framework.
-2. **Ground every factor.** Dated, source-linked evidence and counter-evidence support one 0–10 proposal for each of 11 factors. A gap is declared; prose does not smooth it away.
-3. **Calculate, then constrain.** `core`, `offensive` and `tactical` lenses reweight the same structured proposals for different research questions. Deterministic code turns the selected lens into a 100-point total and grade; a triggered Veto yields `X`, while insufficient confidence yields `NR` instead of a total.
-4. **Review before release — implemented API gate.** M2 implements the `draft` → `needs_review` → `approved` transitions and records the reviewer decision. M3 now runs the scope agent and six specialist agents offline, covering all 11 factors through deterministic cassette replay. M4 renders the approved `ReportModel` into one manifest-bound report bundle; the recorded fixture is still a checked offline example, not a current rating or investment instruction.
+1. **Fix the research contract.** Each run identifies one ordinary listed operating company, a research date, a data cutoff and the versioned [`common-stock@1.0.0`](frameworks/common-stock.yaml) framework.
+2. **Ground all 11 factors.** Dated evidence and counter-evidence support one 0–10 proposal per factor. Missing or stale evidence stays visible.
+3. **Run the audit.** The Red-Team agent records typed issues. A blocking issue routes the run to `needs_review` before scoring.
+4. **Calculate deterministically.** `core`, `offensive` and `tactical` lenses reweight the same proposals. A Veto returns `X`; insufficient confidence returns `NR`.
+5. **Approve explicitly.** Review decisions record actor, reason and optimistic-lock version. Approval creates an immutable research version.
 
 ### The 11 factors and their weights
 
@@ -63,7 +114,7 @@ That boundary is the heart of 渊衡. Agents can read, compare, explain and chal
   <img src="docs/assets/scoring-weights.svg" alt="Weight map for the common-stock framework. Core allocates 64 percent to fundamentals, 27 percent to growth and valuation, and 9 percent to market factors. Offensive allocates 37, 49, and 14 percent. Tactical allocates 13, 16, and 71 percent." width="100%" />
 </p>
 
-The map shows the shape; this table carries every number. Each lens reweights the same evidence-backed 0–10 proposals, rather than creating a separate evidence standard.
+Every lens uses the same evidence standard and the same 0–10 factor proposals.
 
 | Factor | Category | `core` | `offensive` | `tactical` |
 | --- | --- | ---: | ---: | ---: |
@@ -80,198 +131,113 @@ The map shows the shape; this table carries every number. Each lens reweights th
 | Catalyst window | Market | 0% | 4% | 22% |
 | **Total** |  | **100%** | **100%** | **100%** |
 
-`core` prioritizes business quality and financial resilience. `offensive` puts almost half its weight on growth and valuation. `tactical` concentrates on timing, liquidity, downside and catalysts. A high score elsewhere cannot offset a Veto or turn insufficient confidence into a number.
+`core` emphasizes business quality and financial resilience. `offensive` assigns almost half its weight to growth and valuation. `tactical` concentrates on timing, liquidity, downside and catalysts. A Veto takes precedence over the weighted total, and insufficient confidence cannot be converted into a numeric result.
 
-The [full framework](frameworks/common-stock.yaml) remains the source of truth for factor anchors, lens weights, Veto thresholds and the complete rating spectrum. Changing a weight requires a framework version change, not a README edit.
+The [framework YAML](frameworks/common-stock.yaml) is the source of truth for anchors, weights, Veto thresholds, freshness rules and grade boundaries. Any weight change requires a new framework version.
 
-## From question to report
-
-```mermaid
-flowchart LR
-    Q[Research question] --> C[Research contract]
-    C --> E[Evidence collection]
-    E --> L[Specialist lenses]
-    L --> S[Deterministic scoring]
-    S --> R[Red-team review]
-    R --> H{Human approval}
-    H -->|revise| E
-    H -->|approve| P[Immutable report package]
-    P --> J[JSON]
-    P --> M[Markdown]
-    P --> HT[HTML]
-    P --> PDF[Print-ready PDF]
-```
-
-The system is intentionally a pipeline with explicit handoffs. A failed provider, weak source or unresolved contradiction becomes visible state, rather than disappearing into a final paragraph.
-
-## Architecture at a glance
-
-```mermaid
-flowchart TB
-    subgraph Interface[Interfaces]
-      API[Headless REST API]
-      CLI[Optional CLI]
-      WEB[Optional review console]
-    end
-
-    subgraph Orchestration[Orchestration]
-      RUN[Research run state machine]
-      BUS[Event and audit log]
-      GATE[Review and approval gate]
-    end
-
-    subgraph Intelligence[Agent layer]
-      FACTS[Fact collector]
-      BUSINESS[Business quality]
-      FIN[Financial quality]
-      VAL[Valuation]
-      RISK[Risk and governance]
-      TEAM[Red team]
-    end
-
-    subgraph Core[Deterministic core]
-      SCHEMA[Versioned schemas]
-      SCORE[Weighted score engine]
-      VETO[Veto and NR rules]
-      GRADE[Grade mapping]
-      ART[Artifact renderer]
-    end
-
-    API --> RUN
-    CLI --> API
-    WEB --> API
-    RUN --> BUS
-    RUN --> FACTS
-    RUN --> BUSINESS
-    RUN --> FIN
-    RUN --> VAL
-    RUN --> RISK
-    FACTS --> SCHEMA
-    BUSINESS --> SCHEMA
-    FIN --> SCHEMA
-    VAL --> SCHEMA
-    RISK --> SCHEMA
-    TEAM --> GATE
-    SCHEMA --> SCORE --> VETO --> GRADE --> GATE --> ART
-```
-
-## What v1 covers
-
-| Area | v1 decision |
-| --- | --- |
-| Research unit | One ordinary US-listed operating company per run |
-| Product surface | Headless REST API first; CLI and Vue review console are optional clients |
-| Scoring | 11-factor, 100-point framework with confidence, Veto, `NR` and versioning |
-| Evidence | SEC EDGAR/XBRL, company investor relations and replaceable market-data providers |
-| Models | OpenAI, Anthropic and OpenAI-compatible adapters |
-| Storage | SQLite for local work; PostgreSQL for a service deployment |
-| Reports | JSON, polished HTML, well-formed Markdown and print-generated PDF |
-| Approval | Human approval is required before an official rating is published |
-
-Out of scope for v1: ETFs, banks and insurers, cyclical resources, REITs, batch ranking, portfolio optimization, automated trading, multi-tenant SaaS and official A/H-share data connectors.
-
-## A report should answer four questions
+## Reports stay tied to the same facts
 
 <p align="center">
   <img src="docs/assets/report-ribbon.svg" alt="Fathomark report sections: thesis, score, risks and evidence" width="100%" />
 </p>
 
-| Reader need | Fathomark report section |
+| Reader question | Report content |
 | --- | --- |
-| What is the current view? | Thesis, grade, score and confidence |
-| Why did it get that view? | Factor cards with evidence and counter-evidence |
-| What could invalidate it? | Vetoes, open questions, risks and red-team objections |
-| Can I audit the result later? | Sources, dates, framework version, input hash and approval record |
+| What is the view? | Scope, grade, lens scores and confidence |
+| What supports it? | Factor rationale, evidence and counter-evidence |
+| What could invalidate it? | Vetoes, missing data and Red-Team issues |
+| Can it be audited later? | Source dates, framework reference, snapshot hash, model hash and approval record |
 
-The HTML report is the visual master. Markdown remains portable, JSON remains machine-readable, and PDF is generated from the same print layout so the four formats do not drift apart.
+All renderers consume the same integrity-checked `ReportModel`. The reporting package creates JSON, Markdown, HTML and PDF bytes plus a manifest; the API stores and serves those artifacts with their content and manifest hashes. The pinned Docker font and target Chromium checks cover pagination, blank pages, expected text and horizontal overflow.
 
-## Designed as a backend other systems can call
+## API-first integration
 
-The core workflow is API-first. A future client can create a run, poll its state, inspect evidence, request review, approve a version and fetch report artifacts without knowing how the web console is built.
+The REST API is available under `/v1`; the checked contract lives at [`docs/api/openapi-v1.json`](docs/api/openapi-v1.json). Creating a run is idempotent:
 
 ```http
-POST /v1/research-runs
+POST /v1/research-runs HTTP/1.1
 Content-Type: application/json
+Idempotency-Key: readme-create-1
 
 {
-  "symbol": "AAPL",
+  "symbol": "ADBE",
   "exchange": "NASDAQ",
   "research_role": "core",
-  "as_of": "2026-09-18",
-  "framework_version": "common-stock.v1"
+  "horizon": "5-10y",
+  "research_date": "2026-09-03",
+  "data_cutoff": "2026-09-03",
+  "framework_ref": "common-stock@1.0.0"
 }
 ```
 
-```text
-202 Accepted
-Location: /v1/research-runs/run_01J...
-```
+The API returns `201 Created` for the first request and `200 OK` when the same idempotency key is replayed. It exposes create, inspect, execute, ingest, compute, review, resolve, approve, cancel, retry, result and artifact endpoints. The [Python SDK](docs/api-and-sdk.md) and [CLI](docs/cli.md) remain thin clients; scoring and approval rules stay on the server.
 
-The public API will expose stable contracts for `draft`, `needs_review`, `approved`, `failed` and `cancelled` states. A consumer can safely treat an approved result as a versioned research artifact rather than as a live trading instruction.
+## Scope and boundaries
+
+| Area | v1 boundary |
+| --- | --- |
+| Research unit | One ordinary US-listed operating company per run |
+| Product surface | Headless REST API, Python SDK and optional CLI; no bundled review UI |
+| Execution | Synchronous `/execute` in the demo with resumable step records; no standalone queue or worker service |
+| Storage | Embedded SQLite for local use; optional PostgreSQL for service deployments |
+| Providers | Live adapters require deployment-owned credentials, terms review, rate limits and availability checks |
+| Security | The local API has no built-in production authentication; follow [SECURITY.md](SECURITY.md) before network exposure |
+| Release | CI, SBOM and release checks exist; maintainer approval and a signed tag are still required |
+
+ETFs, banks and insurers, cyclical resources, REITs, batch ranking, portfolio optimization, automated trading, multi-tenant SaaS and official A/H-share connectors are outside v1.
 
 ## Repository map
 
 ```text
-fathomark/
+Fathomark/
 ├── packages/
-│   ├── core/          # schemas, framework rules, scoring, Veto and grade mapping
-│   ├── agents/        # specialist contracts and orchestration
-│   ├── providers/     # filings, IR and market-data adapters
-│   ├── reports/       # JSON, HTML, Markdown and PDF renderers
-│   ├── cli/           # optional API CLI and plugin contract scaffolding
-│   └── api/           # REST service and background worker entry points
+│   ├── core/          # schemas, framework loading, scoring, Veto and valuation
+│   ├── providers/     # evidence, market-data and LLM provider contracts/adapters
+│   ├── agents/        # scope, specialist, Red-Team and resumable orchestration
+│   ├── storage/       # SQLAlchemy repositories, state machine and Alembic migrations
+│   ├── api/           # FastAPI service and recorded-demo wiring
+│   ├── sdk/           # thin Python API client
+│   ├── reporting/     # ReportModel, charts, renderers, PDF checks and manifests
+│   └── cli/           # optional API client and plugin contract templates
 ├── frameworks/        # versioned scoring definitions
-├── docs/              # design notes and integration guidance
-├── examples/          # recorded provider responses and sample reports
-└── tests/             # contract, deterministic-core and integration tests
+├── examples/fixtures/ # recorded offline research cases
+├── docs/              # contracts, guides, design and release evidence
+├── scripts/           # cassette, OpenAPI and PDF verification helpers
+└── tests/             # repository-level release contracts
 ```
 
-## Read next
+## Documentation
 
-1. [System design](docs/design/2026-09-18-fathomark-design.md) — architecture, data contracts, scoring governance and report formats.
-2. [Roadmap](TODO.md) — milestones, acceptance criteria and the remaining project work.
-3. [CLI guide](docs/cli.md) and [plugin development](docs/plugin-development.md) — optional client and extension boundaries.
+- [Five-minute local demo](docs/quickstart.md)
+- [API and Python SDK](docs/api-and-sdk.md) · [OpenAPI v1](docs/api/openapi-v1.json)
+- [CLI](docs/cli.md) · [Plugin development](docs/plugin-development.md)
+- [Data providers](DATA_PROVIDERS.md) · [Model providers](MODEL_PROVIDERS.md)
+- [Reporting](docs/reporting-development.md) · [Scoring framework development](docs/framework-development.md)
+- [System design](docs/design/2026-09-18-fathomark-design.md) · [Roadmap](TODO.md) · [Release checklist](docs/release-checklist.md)
 
-M2 is done: `packages/storage` and `packages/api` implement the run state machine, SQLite/PostgreSQL storage, the headless API (create, query, cancel, retry, review, approve, result), the Python SDK in `packages/sdk`, the versioned OpenAPI contract and HMAC webhooks. M3 adds provider protocols with fake/replay/recording test doubles, hosted-LLM adapters, SEC/IR/market data adapters, a scope agent, six specialist agents with a repair loop, cutoff/freshness-aware evidence normalization, auditable LLM budgets, automatic evidence-gap routing, and a step-recorded Red-Team audit that persists typed issues and blocks drafts when an issue is blocking. M4 adds deterministic report bundle/manifest contracts; M5 adds the local demo, CLI and release foundations. The asynchronous worker, operator verification of live-source availability/licensing, target-image browser checks and review console remain explicit boundaries — see [TODO.md](TODO.md).
+## Development
 
-## Get the repository
+Python 3.12+ and [uv](https://docs.astral.sh/uv/) are required for local development.
 
 ```bash
-git clone git@github.com:MapleQiAN/Fathomark.git
-cd Fathomark
+uv sync --locked
+uv run ruff check .
+uv run ruff format --check .
+uv run pytest -q
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow. The project is pre-1.0, so contract changes should include the matching tests and documentation.
 
 ## Principles
 
 1. Agents collect evidence, make explicit judgments and surface counterexamples; deterministic code owns arithmetic and state transitions.
-2. Identical structured inputs produce identical scores, Veto results and grades.
-3. Missing evidence produces `NR`; prose cannot manufacture a number.
-4. Every factor conclusion is traceable to dated, source-linked evidence.
-5. An approved version is immutable; a change creates a new version.
-6. Fathomark is research and decision support, not a return forecast or trading instruction.
+2. Identical validated inputs produce identical scores, Veto results, grades and hashes.
+3. Missing evidence produces `NR` or review state; prose cannot manufacture a number.
+4. Every factor conclusion remains traceable to dated, source-linked evidence.
+5. Approved versions are immutable.
+6. Fathomark supports research decisions; it does not predict returns or issue trading instructions.
 
-## Project status
-
-| Milestone | State |
-| --- | --- |
-| Brand, architecture and contracts | ✅ Defined |
-| Deterministic scoring core | ✅ Implemented (M1) |
-| Agent adapters and provider recordings | Protocols + scope and all six specialist agents ✅ (M3, offline replay) |
-| API and worker | API ✅ Implemented (M2); orchestrator ✅ (M3 slice); background worker ◻ Planned |
-| HTML / Markdown / PDF renderer | ✅ Implemented from one `ReportModel`; browser/font deployment checks remain |
-| Self-contained demo and release packaging | ✅ Local Docker/SQLite + recorded golden path + CLI; maintainer release gates remain |
-
-M1 scoring core 已实现：`packages/core` 承载 `common-stock@1.0.0` 框架的确定性评分、Veto 与评级映射。
-离线可复现：`examples/fixtures/adbe_2026-09-03` 金样测试证明同一 JSON 输入永远得到同一快照（ADBE 核心 85.75 / A+）。
-
-## Contributing
-
-The project is pre-1.0 and the API surface is not stable yet. Feedback is most useful when it is concrete: point to a contract, state transition, evidence rule or report section and describe the failure mode it prevents.
-
-See [LICENSE](LICENSE), [NOTICE](NOTICE), [CONTRIBUTING.md](CONTRIBUTING.md),
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md),
-[DISCLAIMER.md](DISCLAIMER.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md) and
-[MODEL_PROVIDERS.md](MODEL_PROVIDERS.md) for the project policies.
+See [LICENSE](LICENSE), [NOTICE](NOTICE), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), [DISCLAIMER.md](DISCLAIMER.md), [SECURITY.md](SECURITY.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md) and [MODEL_PROVIDERS.md](MODEL_PROVIDERS.md) for project policies.
 
 <p align="center">
   <sub>Fathomark · 渊衡</sub><br />
