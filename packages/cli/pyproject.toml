@@ -1,0 +1,20 @@
+[project]
+name = "fathomark-cli"
+version = "0.1.0"
+description = "Optional command-line client for the Fathomark headless API"
+requires-python = ">=3.12"
+dependencies = ["fathomark-sdk"]
+
+[project.scripts]
+fathomark = "fathomark_cli.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fathomark_cli"]
+
+[tool.uv.sources]
+fathomark-sdk = { workspace = true }
+

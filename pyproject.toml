@@ -3,11 +3,11 @@ name = "fathomark"
 version = "0.1.0"
 description = "Fathomark 渊衡 — evidence-driven multi-agent equity scoring"
 requires-python = ">=3.12"
-dependencies = ["fathomark-core", "fathomark-storage", "fathomark-api", "fathomark-sdk", "fathomark-providers", "fathomark-agents", "fathomark-reporting"]
+dependencies = ["fathomark-core", "fathomark-storage", "fathomark-api", "fathomark-sdk", "fathomark-providers", "fathomark-agents", "fathomark-reporting", "fathomark-cli"]
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.2"]
-pdf = ["playwright>=1.50"]
+pdf = ["playwright>=1.50", "pypdf>=5.0"]
 
 [tool.uv.sources]
 fathomark-core = { workspace = true }
@@ -17,6 +17,7 @@ fathomark-sdk = { workspace = true }
 fathomark-providers = { workspace = true }
 fathomark-agents = { workspace = true }
 fathomark-reporting = { workspace = true }
+fathomark-cli = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]
