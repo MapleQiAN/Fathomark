@@ -1,0 +1,52 @@
+<style>
+  .scope-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; margin-top:26px; }
+  .scope-card { border:1px solid #dbe3e0; border-radius:20px; padding:22px; background:#fff; cursor:pointer; transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+  .scope-card:hover { transform:translateY(-3px); box-shadow:0 18px 42px rgba(30,63,57,.1); border-color:#78a99f; }
+  .scope-card.selected { outline:3px solid #2f7d70; outline-offset:3px; }
+  .scope-card.recommended { background:#f2f7f5; }
+  .scope-card .tag { display:inline-block; padding:5px 9px; border-radius:999px; background:#dcece7; color:#205f55; font-size:11px; font-weight:700; letter-spacing:.05em; }
+  .scope-card h3 { margin:18px 0 8px; font-size:19px; }
+  .scope-card p { color:#64706c; font-size:13px; line-height:1.6; min-height:63px; }
+  .feature-list { list-style:none; padding:0; margin:18px 0 0; border-top:1px solid #dfe6e3; }
+  .feature-list li { padding:10px 0; border-bottom:1px solid #edf1ef; font-size:12px; color:#35413e; }
+  .mini-ui { height:160px; margin-top:18px; padding:14px; border-radius:14px; background:#f7f9f8; border:1px solid #e3e9e6; }
+  .mini-top { height:8px; width:42%; background:#2f7d70; border-radius:10px; margin-bottom:12px; }
+  .mini-line { height:6px; background:#dce3e0; border-radius:8px; margin:8px 0; }
+  .mini-line.short { width:64%; }
+  .mini-chart { display:flex; align-items:end; gap:5px; height:70px; margin-top:15px; }
+  .mini-chart i { flex:1; background:#71aa9f; border-radius:4px 4px 1px 1px; }
+  .sliders { display:grid; gap:13px; margin-top:18px; }
+  .slider { height:5px; background:#d5dfdc; border-radius:10px; position:relative; }
+  .slider::after { content:""; position:absolute; left:58%; top:-4px; width:13px; height:13px; background:#2f7d70; border-radius:50%; }
+  @media(max-width:900px){.scope-grid{grid-template-columns:1fr}.scope-card p{min-height:auto}}
+</style>
+
+<h2>HTML 要做到哪种“功能丰富”？</h2>
+<p class="subtitle">三种方案都保留完整正文、20 个章节、全部表格和图片。区别在于是否允许用户修改研究参数。</p>
+
+<div class="scope-grid">
+  <div class="scope-card recommended" data-choice="reader" onclick="toggleSelect(this)">
+    <span class="tag">推荐</span>
+    <h3>A · 专业研究阅读器</h3>
+    <p>围绕快速理解、定位证据和舒适长文阅读设计，所有正式数字保持不变。</p>
+    <div class="mini-ui"><div class="mini-top"></div><div class="mini-line"></div><div class="mini-line short"></div><div class="mini-chart"><i style="height:28%"></i><i style="height:52%"></i><i style="height:86%"></i><i style="height:49%"></i></div></div>
+    <ul class="feature-list"><li>章节目录与阅读进度</li><li>全文搜索和章节折叠</li><li>图表提示、数据表切换</li><li>浅色/深色、打印与 PDF</li></ul>
+  </div>
+
+  <div class="scope-card" data-choice="simulator" onclick="toggleSelect(this)">
+    <span class="tag">实验工具</span>
+    <h3>B · 情景模拟器</h3>
+    <p>加入可调整参数的估值实验区，适合探索假设，但会产生报告外的新数字。</p>
+    <div class="mini-ui"><div class="mini-top"></div><div class="sliders"><div class="slider"></div><div class="slider"></div><div class="slider"></div></div><div class="mini-line short" style="margin-top:25px"></div></div>
+    <ul class="feature-list"><li>调整 EPS 与终值 P/E</li><li>调整情景概率</li><li>即时重算五年回报</li><li>模拟结果与正式结论隔离</li></ul>
+  </div>
+
+  <div class="scope-card" data-choice="both" onclick="toggleSelect(this)">
+    <span class="tag">完整体验</span>
+    <h3>C · 阅读器 + 模拟实验区</h3>
+    <p>保留完整阅读体验，并在独立区域提供参数模拟，功能最多，页面也更复杂。</p>
+    <div class="mini-ui"><div class="mini-top"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><div class="mini-line"></div><div class="mini-line short"></div><div class="mini-chart"><i style="height:35%"></i><i style="height:74%"></i><i style="height:52%"></i></div></div><div class="sliders"><div class="slider"></div><div class="slider"></div><div class="slider"></div></div></div></div>
+    <ul class="feature-list"><li>专业阅读器全部功能</li><li>独立情景实验工作台</li><li>一键恢复报告原始参数</li><li>更高开发和验证成本</li></ul>
+  </div>
+</div>
+

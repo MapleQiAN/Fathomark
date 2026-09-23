@@ -1,0 +1,97 @@
+<style>
+  .directions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; margin-top:24px; }
+  .direction { border:1px solid #d8dadd; border-radius:22px; overflow:hidden; cursor:pointer; background:white; transition:transform .25s ease, box-shadow .25s ease; }
+  .direction:hover { transform:translateY(-4px); box-shadow:0 22px 50px rgba(29,35,42,.12); }
+  .direction.selected { outline:3px solid #2e756c; outline-offset:3px; }
+  .preview { min-height:520px; padding:22px; position:relative; }
+  .choice-label { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:999px; font:700 13px/1 ui-monospace,monospace; margin-bottom:18px; }
+  .kicker { font:700 10px/1.2 ui-monospace,monospace; letter-spacing:.16em; text-transform:uppercase; }
+  .hero-title { font:650 27px/1.06 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; letter-spacing:-.04em; margin:14px 0 16px; }
+  .summary { font:400 12px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; max-width:31ch; }
+  .score-row { display:grid; grid-template-columns:1.25fr .75fr; gap:12px; margin:24px 0 18px; }
+  .metric { padding:14px; border-top:1px solid currentColor; }
+  .metric strong { display:block; font:650 26px/1 ui-monospace,monospace; letter-spacing:-.06em; }
+  .metric span { display:block; margin-top:8px; font-size:10px; opacity:.65; }
+  .chart { height:88px; display:flex; align-items:end; gap:6px; margin-top:22px; }
+  .chart i { flex:1; border-radius:5px 5px 1px 1px; opacity:.86; }
+  .toc { margin-top:22px; padding-top:16px; border-top:1px solid currentColor; display:grid; grid-template-columns:1fr 1fr; gap:7px 14px; font-size:9px; opacity:.74; }
+  .direction-body { padding:18px 20px 22px; border-top:1px solid #eceeef; }
+  .direction-body h3 { margin:0 0 7px; font-size:16px; }
+  .direction-body p { margin:0; color:#636b72; font-size:13px; line-height:1.5; }
+  .a { background:#f4f0e7; color:#18332f; }
+  .a .choice-label { background:#18332f; color:#f4f0e7; }
+  .a .accent { color:#b45b3e; }
+  .a .chart i { background:#2e756c; }
+  .a::after { content:""; position:absolute; right:-44px; top:58px; width:150px; height:150px; border:1px solid rgba(24,51,47,.24); border-radius:50%; }
+  .b { background:#f7f9f8; color:#18201f; }
+  .b .choice-label { background:#d8eee8; color:#1e645a; }
+  .b .hero-title { max-width:8ch; }
+  .b .score-row { background:#fff; border:1px solid #dfe6e3; border-radius:14px; padding:4px; }
+  .b .metric { border-top:0; }
+  .b .chart i { background:#2f7d70; }
+  .b .toc { background:#edf2f0; border-top:0; border-radius:12px; padding:14px; }
+  .c { background:#11191b; color:#e8f0ed; }
+  .c .choice-label { background:#8ac6b7; color:#11191b; }
+  .c .kicker { color:#8ac6b7; }
+  .c .summary { color:#b6c2bf; }
+  .c .score-row { border:1px solid #2a3a3a; background:#162123; }
+  .c .metric { border-color:#40504e; }
+  .c .chart i { background:#8ac6b7; }
+  .c .chart i:first-child { background:#cf7658; }
+  .c .toc { color:#c7d1ce; border-color:#334240; }
+  @media (max-width:900px){ .directions{grid-template-columns:1fr;} .preview{min-height:440px;} }
+</style>
+
+<h2>选择 AAPL 成品报告的视觉方向</h2>
+<p class="subtitle">三种方案都将包含 Markdown 的全部 20 个章节、所有表格与两张图。点击你最希望继续深化的一种。</p>
+
+<div class="directions">
+  <div class="direction" data-choice="editorial" onclick="toggleSelect(this)">
+    <div class="preview a">
+      <div class="choice-label">A</div>
+      <div class="kicker">Fathomark / Long-term core</div>
+      <div class="hero-title">Apple 长期核心仓研究</div>
+      <p class="summary">核心仓级资产，候选仓级价格。生态与现金流仍然强劲，当前估值压低长期赔率。</p>
+      <div class="score-row">
+        <div class="metric"><strong>79.60</strong><span>核心仓总分 / 100</span></div>
+        <div class="metric"><strong class="accent">B+</strong><span>候选准入</span></div>
+      </div>
+      <div class="chart"><i style="height:24%"></i><i style="height:52%"></i><i style="height:88%"></i><i style="height:51%"></i></div>
+      <div class="toc"><span>01 投资命题</span><span>02 商业模式</span><span>03 财务质量</span><span>04 估值分析</span><span>05 情景回报</span><span>06 风险监控</span></div>
+    </div>
+    <div class="direction-body"><h3>A · 编辑部投研杂志</h3><p>暖白纸张感、深绿与陶土色，阅读舒适，兼顾长文和专业印刷质感。</p></div>
+  </div>
+
+  <div class="direction" data-choice="research-desk" onclick="toggleSelect(this)">
+    <div class="preview b">
+      <div class="choice-label">B</div>
+      <div class="kicker">AAPL · NASDAQ · 2026.07.18</div>
+      <div class="hero-title">长期核心仓研究</div>
+      <p class="summary">一份可审计、可导航、可打印的完整研究档案。数字、证据和判断分层呈现。</p>
+      <div class="score-row">
+        <div class="metric"><strong>79.60</strong><span>CORE SCORE</span></div>
+        <div class="metric"><strong style="color:#2f7d70">B+</strong><span>RATING</span></div>
+      </div>
+      <div class="chart"><i style="height:100%"></i><i style="height:100%"></i><i style="height:85%"></i><i style="height:40%"></i><i style="height:80%"></i><i style="height:4%"></i><i style="height:100%"></i></div>
+      <div class="toc"><span>投资摘要</span><span>关键指标</span><span>因子评分</span><span>五年情景</span><span>估值敏感性</span><span>证据与风险</span></div>
+    </div>
+    <div class="direction-body"><h3>B · 现代研究工作台</h3><p>清爽白底、克制青绿、更多数据工具与交互，HTML 功能最强，PDF 仍然稳重。</p></div>
+  </div>
+
+  <div class="direction" data-choice="dark-terminal" onclick="toggleSelect(this)">
+    <div class="preview c">
+      <div class="choice-label">C</div>
+      <div class="kicker">FATHOMARK RESEARCH NOTE</div>
+      <div class="hero-title">AAPL<br>Core thesis</div>
+      <p class="summary">Quality remains exceptional. Valuation absorbs most of the five-year return potential.</p>
+      <div class="score-row">
+        <div class="metric"><strong>79.60</strong><span>CORE SCORE</span></div>
+        <div class="metric"><strong style="color:#8ac6b7">B+</strong><span>WATCHLIST</span></div>
+      </div>
+      <div class="chart"><i style="height:25%"></i><i style="height:50%"></i><i style="height:92%"></i><i style="height:49%"></i></div>
+      <div class="toc"><span>MOAT / 10.0</span><span>HEALTH / 10.0</span><span>VALUATION / 0.0</span><span>POLICY / 4.0</span><span>SCENARIO / 4.9%</span><span>RISK / ELEVATED</span></div>
+    </div>
+    <div class="direction-body"><h3>C · 深色机构终端</h3><p>年轻、锐利、屏幕表现强；长文阅读与纸质 PDF 的舒适度弱于前两种。</p></div>
+  </div>
+</div>
+
