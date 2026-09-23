@@ -26,9 +26,9 @@
 > [!IMPORTANT]
 > Fathomark is pre-1.0. The repository implements the M1–M5 core and validates it with offline fixtures and CI. The default Docker demo replays a recorded ADBE case and makes no live market-data or model calls. An internet-facing deployment still needs authentication, secret management, provider licensing and rate-limit review, monitoring and operator-owned release checks. No signed release tag exists yet.
 
-## Run the self-contained demo
+## Use Fathomark: local demo
 
-The default Compose stack starts the API with SQLite in a named volume. It needs no PostgreSQL service, provider account or LLM key.
+Fathomark is a headless API with an optional CLI; it does not include a research dashboard. For the quickest complete run, install Docker with Compose, then start the API from a checkout. The default stack uses SQLite in a named volume and needs no PostgreSQL service, provider account or LLM key. The commands below also need `curl`.
 
 ```bash
 git clone https://github.com/MapleQiAN/Fathomark.git
@@ -36,14 +36,46 @@ cd Fathomark
 docker compose up --build
 ```
 
-In another terminal:
+Keep that terminal open. In another terminal, check the service (the interactive API reference is at [localhost:8000/docs](http://localhost:8000/docs)):
 
 ```bash
 curl http://localhost:8000/health
 # {"status":"ok"}
 ```
 
-Continue with the [five-minute create → execute → approve walkthrough](docs/quickstart.md), or use the optional [CLI](docs/cli.md). The demo fixture is reproducible research infrastructure; it is not a current rating, forecast, recommendation or trade instruction.
+**1. Create a research run.** This exact ADBE scope matches the recorded demo fixture. Copy the `id` from the JSON response into `RUN_ID` for the following commands. Use a new `Idempotency-Key` when creating a separate run; repeating the same key returns the existing run.
+
+```bash
+curl -sS -X POST http://localhost:8000/v1/research-runs \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: readme-adbe-create-1' \
+  -d '{"symbol":"ADBE","exchange":"NASDAQ","research_role":"core","horizon":"5-10y","research_date":"2026-09-03","data_cutoff":"2026-09-03","framework_ref":"common-stock@1.0.0"}'
+RUN_ID='<id from the response>'
+```
+
+**2. Execute and inspect the draft.** `/execute` replays the fixture's evidence and model responses, then computes the score. A successful response has `state: "draft"`; `/result` contains the unapproved `snapshot` with factor scores, lens results, confidence and a content hash. Review the recorded [input and source material](examples/fixtures/adbe_2026-09-03) before approving; the snapshot itself does not contain the full evidence ledger.
+
+```bash
+curl -sS -X POST "http://localhost:8000/v1/research-runs/${RUN_ID}/execute"
+curl -sS "http://localhost:8000/v1/research-runs/${RUN_ID}/result"
+```
+
+**3. Approve the reviewed result.** First read `lock_version` from the run response and substitute that number below. Approval records the actor and creates an immutable version. If the version has changed, fetch the run again before deciding whether to retry.
+
+```bash
+curl -sS "http://localhost:8000/v1/research-runs/${RUN_ID}"
+LOCK_VERSION='<lock_version from the response>'
+curl -sS -X POST "http://localhost:8000/v1/research-runs/${RUN_ID}/approve" \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: readme-adbe-approve-1' \
+  -H 'Actor: your-name' \
+  -d "{\"expected_lock_version\":${LOCK_VERSION}}"
+curl -sS "http://localhost:8000/v1/research-runs/${RUN_ID}/result"
+```
+
+The final `/result` response has `state: "approved"`, the score `snapshot`, and a `version` record. The demo does not automatically generate or upload a PDF/HTML report; `/v1/research-runs/{run_id}/artifacts` lists only artifacts stored for that run. For other API operations, use the [five-minute guide](docs/quickstart.md), [API and SDK guide](docs/api-and-sdk.md), or [CLI guide](docs/cli.md). Stop with `Ctrl-C` and `docker compose down`; the named SQLite volume survives container removal.
+
+The demo fixture is reproducible historical research infrastructure, not a current rating, forecast, recommendation or trade instruction. The default `/execute` path is configured for this recorded case; researching another company requires an explicitly configured provider and orchestrator. See [data providers](DATA_PROVIDERS.md) and [model providers](MODEL_PROVIDERS.md).
 
 ## Why Fathomark
 

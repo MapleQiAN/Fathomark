@@ -26,9 +26,9 @@
 > [!IMPORTANT]
 > Fathomark 仍处于 1.0 之前。仓库已实现 M1–M5 核心，并通过离线夹具与 CI 校验。默认 Docker Demo 回放录制的 ADBE 案例，不会调用实时行情或模型服务。面向公网部署时，还需补充身份认证、密钥管理、Provider 授权与限流审查、监控及由运维方负责的发布检查。仓库目前还没有签名发布标签。
 
-## 运行自包含 Demo
+## 使用 Fathomark：本地 Demo
 
-默认 Compose 服务使用具名卷中的 SQLite 启动 API，不要求 PostgreSQL 服务、Provider 账户或 LLM 密钥。
+Fathomark 提供无界面的 API 和可选 CLI，暂不内置研究工作台。要跑通一次完整流程，先安装带 Compose 的 Docker，再从仓库目录启动 API。默认服务使用具名卷中的 SQLite，不要求 PostgreSQL 服务、Provider 账户或 LLM 密钥。以下命令还需要 `curl`。
 
 ```bash
 git clone https://github.com/MapleQiAN/Fathomark.git
@@ -36,14 +36,46 @@ cd Fathomark
 docker compose up --build
 ```
 
-另开一个终端：
+保持当前终端运行，另开一个终端检查服务（交互式 API 文档位于 [localhost:8000/docs](http://localhost:8000/docs)）：
 
 ```bash
 curl http://localhost:8000/health
 # {"status":"ok"}
 ```
 
-接下来可按[五分钟“创建 → 执行 → 核准”教程](docs/quickstart.md)完成完整流程，也可以使用可选的 [CLI](docs/cli.md)。Demo 夹具用于可复现研究测试，不代表当前评级、预测、推荐或交易指令。
+**1. 创建研究任务。** 以下 ADBE 参数与录制的演示夹具完全对应。从返回的 JSON 中复制 `id`，填入后续命令的 `RUN_ID`。要新建另一项任务，请更换 `Idempotency-Key`；重复使用相同键会返回原任务。
+
+```bash
+curl -sS -X POST http://localhost:8000/v1/research-runs \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: readme-adbe-create-1' \
+  -d '{"symbol":"ADBE","exchange":"NASDAQ","research_role":"core","horizon":"5-10y","research_date":"2026-09-03","data_cutoff":"2026-09-03","framework_ref":"common-stock@1.0.0"}'
+RUN_ID='<从返回结果复制 id>'
+```
+
+**2. 执行并检查草稿。** `/execute` 回放夹具中的证据和模型响应，然后计算评分。成功后状态为 `draft`；`/result` 中尚未核准的 `snapshot` 包含因子分、各 Lens 结果、置信度与内容哈希。核准前请查看录制的[输入与来源资料](examples/fixtures/adbe_2026-09-03)；快照本身不包含完整证据账本。
+
+```bash
+curl -sS -X POST "http://localhost:8000/v1/research-runs/${RUN_ID}/execute"
+curl -sS "http://localhost:8000/v1/research-runs/${RUN_ID}/result"
+```
+
+**3. 核准已审阅的结果。** 先从任务响应中读取 `lock_version`，将其数字填入下方。核准会记录操作者并创建不可变版本。如果版本已变化，请重新读取任务并判断是否重试。
+
+```bash
+curl -sS "http://localhost:8000/v1/research-runs/${RUN_ID}"
+LOCK_VERSION='<从返回结果复制 lock_version>'
+curl -sS -X POST "http://localhost:8000/v1/research-runs/${RUN_ID}/approve" \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: readme-adbe-approve-1' \
+  -H 'Actor: your-name' \
+  -d "{\"expected_lock_version\":${LOCK_VERSION}}"
+curl -sS "http://localhost:8000/v1/research-runs/${RUN_ID}/result"
+```
+
+最终的 `/result` 会返回 `state: "approved"`、评分 `snapshot` 和 `version` 记录。Demo 不会自动生成或上传 PDF/HTML 报告；`/v1/research-runs/{run_id}/artifacts` 只列出该任务已存储的制品。其他 API 操作见[五分钟教程](docs/quickstart.md)、[API 与 SDK 指南](docs/api-and-sdk.md)或 [CLI 指南](docs/cli.md)。使用 `Ctrl-C` 和 `docker compose down` 停止服务；删除容器后，具名卷中的 SQLite 数据仍会保留。
+
+演示夹具只用于复现历史研究结果，不代表当前评级、预测、推荐或交易指令。默认 `/execute` 流程仅配置了这个录制案例；研究其他公司需要明确配置 Provider 和编排器，见[数据 Provider](DATA_PROVIDERS.md) 与[模型 Provider](MODEL_PROVIDERS.md)。
 
 ## 为什么做 Fathomark
 
